@@ -90,6 +90,9 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 	function handleCreate() {
 		const newCode = Math.random().toString(36).slice(2, 8).toUpperCase();
 		onJoin(newCode, name.trim(), true, settings);
+		// The title belongs to the poll just created; it must not leak into
+		// the next one. (It is never persisted to the defaults either.)
+		setSettings((s) => ({ ...s, title: undefined }));
 	}
 
 	function handleJoin() {
@@ -228,6 +231,11 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 									<span className="font-mono text-sm font-semibold tracking-[0.18em]">
 										{poll.code}
 									</span>
+									{poll.title && (
+										<span className="min-w-0 flex-1 truncate text-sm font-medium">
+											{poll.title}
+										</span>
+									)}
 									<span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
 										{poll.phase === 'nominations' && 'Nominating'}
 										{poll.phase === 'voting' && 'Voting'}
