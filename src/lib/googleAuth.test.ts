@@ -31,11 +31,13 @@ vi.mock('@/lib/firebase', () => ({
 	db: {},
 }));
 
+import { auth } from '@/lib/firebase';
 import { googleDisplayName, linkGoogleAccount, switchToGoogleCredential } from '@/lib/googleAuth';
 
 describe('googleAuth', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
+		(auth as { currentUser: unknown }).currentUser = { uid: 'anon-uid-1', isAnonymous: true, email: null };
 	});
 
 	it('link success preserves the anonymous uid (upgrade, not switch)', async () => {
@@ -71,6 +73,28 @@ describe('googleAuth', () => {
 		mockLinkWithPopup.mockRejectedValue({ code: 'auth/popup-closed-by-user' });
 		const result = await linkGoogleAccount();
 		expect(result).toEqual({ status: 'cancelled' });
+		expect(mockSignInWithCredential).not.toHaveBeenCalled();
+	});
+
+	it('fails cleanly when there is no signed-in user yet', async () => {
+		(auth as { currentUser: unknown }).currentUser = null;
+		const result = await linkGoogleAccount();
+		expect(result).toEqual({ status: 'error', message: 'Not signed in yet.' });
+		expect(mockLinkWithPopup).not.toHaveBeenCalled();
+	});
+
+	it('an already-linked (non-anonymous) user is reported linked without a new popup', async () => {
+		(auth as { currentUser: unknown }).currentUser = { uid: 'google-uid-9', isAnonymous: false, email: 'someone@gmail.com' };
+		const result = await linkGoogleAccount();
+		expect(result).toEqual({ status: 'linked', user: { uid: 'google-uid-9', isAnonymous: false, email: 'someone@gmail.com' } });
+		expect(mockLinkWithPopup).not.toHaveBeenCalled();
+		expect(mockSignInWithCredential).not.toHaveBeenCalled();
+	});
+
+	it('an unexpected popup error surfaces as an error and never switches identity', async () => {
+		mockLinkWithPopup.mockRejectedValue({ code: 'auth/network-request-failed', message: 'network down' });
+		const result = await linkGoogleAccount();
+		expect(result.status).toBe('error');
 		expect(mockSignInWithCredential).not.toHaveBeenCalled();
 	});
 
