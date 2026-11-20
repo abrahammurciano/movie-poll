@@ -14,6 +14,8 @@ import {
 	advancePollPhase,
 	createPoll,
 	joinPoll,
+	renameParticipant,
+	registerPoll,
 	revokeParticipant,
 	setBallot,
 	setNominations,
@@ -61,12 +63,31 @@ export function usePoll(pollCode: string, displayName: string, isHost: boolean) 
 		createPoll(pollCode, uid, settings).catch((e) => console.error('create poll failed', e));
 	}, [uid, isHost, pollCode, docs.poll]);
 
-	// Join once the poll exists; a later name change re-joins to update it.
+	// Join once the poll exists. A later name change renames the shared
+	// participant record (keeping joinedAt) so everyone sees the new name.
 	useEffect(() => {
 		if (!uid || !displayName || !docs.poll) return;
 		const existing = docs.participants[uid];
-		if (existing && existing.name === displayName) return;
-		joinPoll(pollCode, uid, displayName).catch((e) => console.error('join poll failed', e));
+		if (!existing) {
+			void (async () => {
+				try {
+					await joinPoll(pollCode, uid, displayName);
+				} catch (e) {
+					console.error('join poll failed', e);
+					return;
+				}
+				// Record the poll in the account-level registry so future
+				// renames reach it from any device. Best-effort: a failure
+				// (e.g. rules not yet deployed) must not affect the join.
+				registerPoll(uid, pollCode, displayName).catch((e) =>
+					console.warn('poll registry write failed', e),
+				);
+			})();
+		} else if (existing.name !== displayName) {
+			renameParticipant(pollCode, uid, displayName).catch((e) =>
+				console.error('rename failed', e),
+			);
+		}
 	}, [uid, displayName, pollCode, docs.poll, docs.participants]);
 
 	const state: PollState = useMemo(
