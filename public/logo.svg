@@ -41,5 +41,5 @@
   <rect x="96" y="222" width="320" height="176" rx="22" fill="url(#board)"/>
 
   <!-- the vote: bold check, fully inside the board -->
-  <path d="M168 314l52 54 124-128" fill="none" stroke="#0e1626" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M180 314l46 48 114-100" fill="none" stroke="#0e1626" stroke-width="36" stroke-linecap="round" stroke-linejoin="round"/>
 </svg>
