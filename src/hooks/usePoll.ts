@@ -9,6 +9,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { authReady } from '@/lib/firebase';
+import { storageKey } from '@/lib/identity';
 import {
 	advancePollPhase,
 	createPoll,
@@ -49,7 +50,7 @@ export function usePoll(pollCode: string, displayName: string, isHost: boolean) 
 	// Create the poll when arriving as its creator and it does not exist yet.
 	useEffect(() => {
 		if (!uid || !isHost || docs.poll !== null) return;
-		const stored = localStorage.getItem(`pollSettings.${pollCode}`);
+		const stored = localStorage.getItem(storageKey(`pollSettings.${pollCode}`));
 		const parsed = stored ? JSON.parse(stored) : {};
 		const settings = {
 			maxNominationsPerUser: 1,
