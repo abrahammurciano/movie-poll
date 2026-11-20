@@ -983,7 +983,18 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 			>
 				<div className="min-w-0">
 					<p className="flex items-center gap-1.5 text-sm font-semibold tracking-tight">
-						<span className="truncate">{state.settings?.title ?? '🎬 Movie Night Polls'}</span>
+						{state.settings?.title ? (
+							<span className="truncate">{state.settings.title}</span>
+						) : (
+							<span className="flex min-w-0 items-center gap-1.5">
+								<img
+									src={`${import.meta.env.BASE_URL}logo.svg`}
+									alt=""
+									className="h-5 w-5 flex-shrink-0 rounded"
+								/>
+								<span className="truncate">Movie Night Polls</span>
+							</span>
+						)}
 						{amHost && (
 							<button
 								className="flex-shrink-0 rounded p-0.5 opacity-50 transition-opacity hover:opacity-100"
