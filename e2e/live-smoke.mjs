@@ -12,7 +12,7 @@
 import { chromium } from 'playwright-core';
 import { mkdirSync } from 'node:fs';
 
-const BASE = 'http://localhost:4173/movie-poll/';
+const BASE = 'https://movie-poll-6ee55.web.app/';
 const SHOTS = new URL('./shots-live/', import.meta.url).pathname;
 mkdirSync(SHOTS, { recursive: true });
 
@@ -60,6 +60,9 @@ if (await nameInput.isVisible().catch(() => false)) {
 await host.getByText(/1 joined|only one here/i).first().waitFor({ timeout: 20000 });
 // The auto-opened invite sheet covers the page; close it.
 await host.getByRole('button', { name: '✕' }).first().click();
+// Wait until the host's own poll doc has loaded from the server: the crown
+// only renders once state.hostId === uid, i.e. the snapshot has arrived.
+await host.getByText('👑').first().waitFor({ timeout: 20000 });
 await host.waitForTimeout(500);
 await shot(host, '01-host-created-mobile');
 
@@ -126,7 +129,10 @@ const deskName = desk.getByPlaceholder('Your name');
 await deskName.waitFor({ timeout: 20000 });
 await deskName.fill('Carol');
 await desk.getByRole('button', { name: 'Join poll' }).click();
-await desk.waitForTimeout(2500);
+// Wait until the desktop client has actually synced the finished poll:
+// the results view shows the winner card ("Tonight's pick").
+await desk.getByText(/tonight's pick|voting closed/i).first().waitFor({ timeout: 30000 });
+await desk.waitForTimeout(1000);
 await shot(desk, '06-results-desktop');
 await desk.goto(BASE);
 await desk.getByText(/Your polls/).waitFor({ timeout: 20000 });

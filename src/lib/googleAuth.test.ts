@@ -17,12 +17,12 @@ const mockOnAuthStateChanged = vi.fn(() => () => {});
 vi.mock('firebase/auth', () => ({
 	GoogleAuthProvider: class {
 		static credentialFromError(...args: unknown[]) {
-			return mockCredentialFromError(...args);
+			return mockCredentialFromError(args[0]);
 		}
 	},
 	linkWithPopup: (...args: unknown[]) => mockLinkWithPopup(...args),
 	signInWithCredential: (...args: unknown[]) => mockSignInWithCredential(...args),
-	onAuthStateChanged: (...args: unknown[]) => mockOnAuthStateChanged(...args),
+	onAuthStateChanged: (...args: unknown[]) => mockOnAuthStateChanged(...(args as [])),
 }));
 
 vi.mock('@/lib/firebase', () => ({
