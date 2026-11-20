@@ -11,7 +11,7 @@ import type { Movie, PeerId } from '@/types';
 import type { CreatePollSettings } from '@/lib/pollSettings';
 import type { Phase } from '@/types';
 import { storageKey, saveDisplayName } from '@/lib/identity';
-import { renameEverywhere } from '@/lib/pollStore';
+import { renameEverywhere, setPollTitle } from '@/lib/pollStore';
 
 function nominatorNames(nominatedBy: PeerId[], peers: Record<PeerId, { name: string }>): string {
 	return nominatedBy.map((id) => peers[id]?.name ?? '?').join(' & ');
@@ -374,6 +374,48 @@ function ShareModal({ pollCode, onClose }: { pollCode: string; onClose: () => vo
 	);
 }
 
+function TitleEditModal({ current, onSave, onCancel }: { current: string; onSave: (title: string) => void; onCancel: () => void }) {
+	const [title, setTitle] = useState(current);
+	return (
+		<div
+			className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4"
+			style={{ background: 'oklch(0 0 0 / 0.6)', backdropFilter: 'blur(4px)' }}
+			onClick={onCancel}
+		>
+			<div
+				className="glass-card w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-6 flex flex-col gap-4"
+				onClick={(e) => e.stopPropagation()}
+			>
+				<p className="font-semibold text-base">Poll title</p>
+				<input
+					className="cinema-input"
+					value={title}
+					maxLength={100}
+					autoFocus
+					placeholder="Poll title (optional)"
+					onChange={(e) => setTitle(e.target.value)}
+					onKeyDown={(e) => { if (e.key === 'Enter') onSave(title.trim()); }}
+				/>
+				<p className="text-[11px] text-muted-foreground">
+					Only you (the host) can set or change it. Everyone sees updates right away. Leave it empty to remove the title.
+				</p>
+				<div className="flex gap-3">
+					<button
+						className="flex-1 rounded-xl py-2.5 text-sm font-medium"
+						style={{ background: 'oklch(1 0 0 / 0.07)', color: 'oklch(1 0 0 / 0.7)' }}
+						onClick={onCancel}
+					>Cancel</button>
+					<button
+						className="flex-1 rounded-xl py-2.5 text-sm font-semibold disabled:opacity-30"
+						style={{ background: 'oklch(0.8 0.12 160)', color: 'oklch(0.17 0.03 160)' }}
+						onClick={() => onSave(title.trim())}
+					>Save</button>
+				</div>
+			</div>
+		</div>
+	);
+}
+
 function NameEditModal({ current, onSave, onCancel }: { current: string; onSave: (name: string) => void; onCancel: () => void }) {
 	const [name, setName] = useState(current);
 	return (
@@ -631,6 +673,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 	const [shareOpen, setShareOpen] = useState(autoShare);
 	const [confirmPhase, setConfirmPhase] = useState(false);
 	const [nameEditOpen, setNameEditOpen] = useState(false);
+	const [titleEditOpen, setTitleEditOpen] = useState(false);
 	const [rankingDragActive, setRankingDragActive] = useState(false);
 	const [nominationDragOver, setNominationDragOver] = useState(false);
 	const [confirmRevoke, setConfirmRevoke] = useState<PeerId | null>(null);
@@ -907,7 +950,21 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 				}}
 			>
 				<div className="min-w-0">
-					<p className="text-sm font-semibold tracking-tight">🎬 Movie Night Polls</p>
+					<p className="flex items-center gap-1.5 text-sm font-semibold tracking-tight">
+						<span className="truncate">{state.settings?.title ?? '🎬 Movie Night Polls'}</span>
+						{amHost && (
+							<button
+								className="flex-shrink-0 rounded p-0.5 opacity-50 transition-opacity hover:opacity-100"
+								onClick={() => setTitleEditOpen(true)}
+								title="Edit poll title"
+								aria-label="Edit poll title"
+							>
+								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
+									<path d="M13.586 3.586a2 2 0 1 1 2.828 2.828l-8.5 8.5a2 2 0 0 1-.878.513l-3 1a.5.5 0 0 1-.622-.622l1-3a2 2 0 0 1 .513-.878l8.5-8.5Z" />
+								</svg>
+							</button>
+						)}
+					</p>
 					<p className="truncate text-sm text-foreground/90">
 						Hello, <button
 							className="font-bold underline-offset-2 hover:underline transition-all"
@@ -1279,6 +1336,17 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 					onConfirmRevoke={setConfirmRevoke}
 					onRevoke={revokePeer}
 					onClose={() => { setPeopleOpen(false); setConfirmRevoke(null); }}
+				/>
+			)}
+
+			{titleEditOpen && (
+				<TitleEditModal
+					current={state.settings?.title ?? ''}
+					onSave={(title) => {
+						setTitleEditOpen(false);
+						if (amHost) void setPollTitle(pollCode, title || null).catch((e) => console.error('set title failed', e));
+					}}
+					onCancel={() => setTitleEditOpen(false)}
 				/>
 			)}
 
