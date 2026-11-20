@@ -8,9 +8,9 @@ import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { ChevronUp, ChevronDown, Users } from 'lucide-react';
 import type { Movie, PeerId } from '@/types';
+import type { CreatePollSettings } from '@/lib/pollSettings';
 import type { Phase } from '@/types';
-import { storageKey } from '@/lib/identity';
-import { getKnownPolls } from '@/lib/knownPolls';
+import { storageKey, saveDisplayName } from '@/lib/identity';
 import { renameEverywhere } from '@/lib/pollStore';
 
 function nominatorNames(nominatedBy: PeerId[], peers: Record<PeerId, { name: string }>): string {
@@ -22,6 +22,7 @@ interface Props {
 	displayName: string;
 	autoShare?: boolean;
 	isHost?: boolean;
+	createSettings?: CreatePollSettings;
 	onLeave?: () => void;
 	onSetName?: (name: string) => void;
 }
@@ -604,7 +605,7 @@ function PeopleSheet({ peers, hostId, selfId, isHost, phase, movies, ballots, co
 	);
 }
 
-export function PollPage({ pollCode, displayName, autoShare = false, isHost = false, onLeave: _onLeave }: Props) {
+export function PollPage({ pollCode, displayName, autoShare = false, isHost = false, createSettings, onLeave: _onLeave }: Props) {
 	const [localDisplayName, setLocalDisplayName] = useState(displayName);
 	// Follow an externally adopted name (e.g. the account-level registry
 	// resolving a canonical name set on another device).
@@ -613,6 +614,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 		pollCode,
 		localDisplayName,
 		isHost,
+		createSettings,
 	);
 	const amHost = state.hostId !== null && state.hostId === selfId;
 	const [ranking, setRanking] = useState<string[]>(() => {
@@ -1284,13 +1286,13 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 				<NameEditModal
 					current={currentUserName}
 					onSave={(name) => {
-						localStorage.setItem(storageKey('displayName'), name);
+						saveDisplayName(name);
 						setLocalDisplayName(name);
 						setNameEditOpen(false);
 						// Global rename: update the shared participant record in every
 						// poll this device knows, so everyone sees the new name. The
 						// current poll is also covered by usePoll's rename effect.
-						if (selfId) void renameEverywhere(selfId, name, getKnownPolls());
+						if (selfId) void renameEverywhere(selfId, name);
 					}}
 					onCancel={() => setNameEditOpen(false)}
 				/>
