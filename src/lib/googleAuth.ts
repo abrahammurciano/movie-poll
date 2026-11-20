@@ -102,4 +102,4 @@ export function observeIdentity(
 	return onAuthStateChanged(auth, (user) => {
 		callback(user ? { uid: user.uid, isAnonymous: user.isAnonymous, email: user.email } : null);
 	});
-					}
+}
