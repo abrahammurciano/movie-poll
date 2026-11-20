@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import type { AuthCredential } from 'firebase/auth';
+import { GoogleLogo } from '@/components/GoogleLogo';
 import { ensureAnonymousUser } from '@/lib/firebase';
 import {
 	continueWithGoogle,
@@ -98,11 +99,16 @@ export function AccountChoiceOverlay({ onDone }: Props) {
 
 				<div className="flex flex-col gap-2">
 					<button
-						className="w-full rounded-xl py-3 text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] cursor-pointer disabled:opacity-40"
-						style={{ background: 'oklch(0.8 0.12 160)', color: 'oklch(0.17 0.03 160)' }}
+						className="w-full rounded-xl py-3 text-sm font-medium transition-all hover:scale-[1.02] hover:shadow-md active:scale-[0.98] cursor-pointer disabled:opacity-40 flex items-center justify-center gap-2.5"
+						style={{
+							background: '#ffffff',
+							color: '#1f1f1f',
+							border: '1px solid #dadce0',
+						}}
 						onClick={handleGoogle}
 						disabled={busy}
 					>
+						<GoogleLogo />
 						{busy ? 'Signing in…' : 'Continue with Google'}
 					</button>
 					<p className="text-xs text-muted-foreground">
