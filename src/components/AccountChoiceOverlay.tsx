@@ -1,32 +1,35 @@
 import { useState } from 'react';
 import type { AuthCredential } from 'firebase/auth';
+import { ensureAnonymousUser } from '@/lib/firebase';
 import {
+	continueWithGoogle,
 	googleDisplayName,
-	linkGoogleAccount,
 	switchToGoogleCredential,
 } from '@/lib/googleAuth';
 
 interface Props {
-	isCreator?: boolean;
 	onDone: (displayName: string) => void;
 }
 
 /**
- * First-run account choice, shown when a user is about to join or share a
- * poll and has no name yet. The user picks consciously between a Google
- * account and a browser-local anonymous account before anything is decided
- * for them.
+ * First-run account gate, shown BEFORE any account exists: a first-time
+ * visitor consciously picks between a Google account and a browser-local
+ * anonymous account, and only that choice creates an identity. Until then
+ * no sign-in of any kind has happened and no poll read, create or join has
+ * fired.
  *
- * Google uses linkWithPopup on the current anonymous identity, so choosing
- * Google upgrades the account in place: the uid, and with it every poll
- * membership, nomination, ballot and host role, carries over. The display
- * name is taken from the Google profile and stays editable afterwards.
+ * Google uses continueWithGoogle: with no session it is a plain Google
+ * sign-in (no anonymous account is ever created); with a restored anonymous
+ * session it links in place, preserving the uid and everything tied to it.
+ * The display name comes from the Google profile and stays editable.
+ *
+ * The anonymous option creates the anonymous account only when clicked.
  *
  * If the Google account already belongs to a different identity in this
  * app, nothing switches silently: the user confirms the identity switch
  * explicitly, with the consequences spelled out.
  */
-export function AccountChoiceOverlay({ isCreator = false, onDone }: Props) {
+export function AccountChoiceOverlay({ onDone }: Props) {
 	const [name, setName] = useState('');
 	const [busy, setBusy] = useState(false);
 	const [error, setError] = useState<string | null>(null);
@@ -38,7 +41,7 @@ export function AccountChoiceOverlay({ isCreator = false, onDone }: Props) {
 	async function handleGoogle() {
 		setBusy(true);
 		setError(null);
-		const result = await linkGoogleAccount();
+		const result = await continueWithGoogle();
 		if (result.status === 'linked') {
 			onDone(googleDisplayName(result.user));
 			return;
@@ -65,10 +68,19 @@ export function AccountChoiceOverlay({ isCreator = false, onDone }: Props) {
 		}
 	}
 
-	function submitAnonymous() {
+	async function submitAnonymous() {
 		const trimmed = name.trim();
 		if (!trimmed) return;
-		onDone(trimmed);
+		setBusy(true);
+		setError(null);
+		try {
+			// The one and only place an anonymous account is created.
+			await ensureAnonymousUser();
+			onDone(trimmed);
+		} catch (err) {
+			setBusy(false);
+			setError((err as Error).message || 'Could not create the anonymous account.');
+		}
 	}
 
 	return (
@@ -78,12 +90,9 @@ export function AccountChoiceOverlay({ isCreator = false, onDone }: Props) {
 		>
 			<div className="glass-card w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-6 flex flex-col gap-5">
 				<div>
-					<p className="text-base font-semibold">
-						{isCreator ? 'Your poll is ready!' : 'Welcome!'}
-					</p>
+					<p className="text-base font-semibold">Welcome!</p>
 					<p className="mt-1 text-sm text-muted-foreground">
-						Choose how you want to {isCreator ? 'share it' : 'join'}. This decides how your
-						identity is kept.
+						Choose how you want to take part. This decides how your identity is kept.
 					</p>
 				</div>
 
@@ -126,7 +135,7 @@ export function AccountChoiceOverlay({ isCreator = false, onDone }: Props) {
 							disabled={!name.trim() || busy}
 							onClick={submitAnonymous}
 						>
-							{isCreator ? 'Continue without an account' : 'Join without an account'}
+							Continue without an account
 						</button>
 					</div>
 					<p className="text-xs text-muted-foreground">
