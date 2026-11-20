@@ -103,16 +103,14 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 		<div className="flex min-h-svh flex-col items-center justify-center px-5 py-14">
 			{/* Hero */}
 			<div className="mb-10 flex flex-col items-center gap-4 text-center">
-				<div
-					className="flex h-16 w-16 items-center justify-center rounded-2xl text-3xl"
+				<img
+					src={`${import.meta.env.BASE_URL}logo.svg`}
+					alt="Movie Night Polls logo"
+					className="h-16 w-16 rounded-2xl"
 					style={{
-						background: 'oklch(0.8 0.12 160 / 0.12)',
-						boxShadow: '0 0 32px -8px oklch(0.8 0.12 160 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.08)',
-						border: '1px solid oklch(0.8 0.12 160 / 0.22)',
+						boxShadow: '0 0 32px -8px oklch(0.8 0.12 160 / 0.4)',
 					}}
-				>
-					🎬
-				</div>
+				/>
 
 				<div>
 					<h1
