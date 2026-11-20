@@ -8,8 +8,10 @@ import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { ChevronUp, ChevronDown, Users } from 'lucide-react';
 import type { Movie, PeerId } from '@/types';
+import type { CreatePollSettings } from '@/lib/pollSettings';
 import type { Phase } from '@/types';
-import { storageKey } from '@/lib/identity';
+import { storageKey, saveDisplayName } from '@/lib/identity';
+import { renameEverywhere } from '@/lib/pollStore';
 
 function nominatorNames(nominatedBy: PeerId[], peers: Record<PeerId, { name: string }>): string {
 	return nominatedBy.map((id) => peers[id]?.name ?? '?').join(' & ');
@@ -20,6 +22,7 @@ interface Props {
 	displayName: string;
 	autoShare?: boolean;
 	isHost?: boolean;
+	createSettings?: CreatePollSettings;
 	onLeave?: () => void;
 	onSetName?: (name: string) => void;
 }
@@ -476,51 +479,6 @@ function PhaseConfirmModal({
 	);
 }
 
-function NamePromptOverlay({ onSubmit, isCreator = false }: { onSubmit: (name: string) => void; isCreator?: boolean }) {
-	const [name, setName] = useState('');
-
-	function submit() {
-		if (!name.trim()) return;
-		onSubmit(name.trim());
-	}
-
-	return (
-		<div
-			className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4"
-			style={{ background: 'oklch(0 0 0 / 0.7)', backdropFilter: 'blur(4px)' }}
-		>
-			<div
-				className="glass-card w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-6 flex flex-col gap-5"
-			>
-				<div>
-					<p className="text-base font-semibold">{isCreator ? 'Your poll is ready!' : "You've been invited!"}</p>
-					<p className="mt-1 text-sm text-muted-foreground">
-						{isCreator ? 'Enter your name before sharing the poll.' : 'Enter your name to join the poll.'}
-					</p>
-				</div>
-				<div className="flex flex-col gap-3">
-					<input
-						className="cinema-input"
-						placeholder="Your name"
-						value={name}
-						autoFocus
-						onChange={(e) => setName(e.target.value)}
-						onKeyDown={(e) => e.key === 'Enter' && submit()}
-					/>
-					<button
-						className="w-full rounded-xl py-3 text-sm font-medium transition-colors disabled:opacity-40"
-						style={{ background: 'oklch(0.8 0.12 160)', color: 'oklch(0.17 0.03 160)' }}
-						disabled={!name.trim()}
-						onClick={submit}
-					>
-						{isCreator ? 'Continue' : 'Join poll'}
-					</button>
-				</div>
-			</div>
-		</div>
-	);
-}
-
 interface PeopleSheetProps {
 	peers: Record<PeerId, { name: string }>;
 	hostId: PeerId | null;
@@ -647,11 +605,16 @@ function PeopleSheet({ peers, hostId, selfId, isHost, phase, movies, ballots, co
 	);
 }
 
-export function PollPage({ pollCode, displayName, autoShare = false, isHost = false, onLeave: _onLeave, onSetName }: Props) {
+export function PollPage({ pollCode, displayName, autoShare = false, isHost = false, createSettings, onLeave: _onLeave }: Props) {
+	const [localDisplayName, setLocalDisplayName] = useState(displayName);
+	// Follow an externally adopted name (e.g. the account-level registry
+	// resolving a canonical name set on another device).
+	useEffect(() => setLocalDisplayName(displayName), [displayName]);
 	const { state, selfId, nominateMovie, submitBallot, advancePhase, revokePeer } = usePoll(
 		pollCode,
-		displayName,
+		localDisplayName,
 		isHost,
+		createSettings,
 	);
 	const amHost = state.hostId !== null && state.hostId === selfId;
 	const [ranking, setRanking] = useState<string[]>(() => {
@@ -665,11 +628,9 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 	const dragStartTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 	const [pendingNomination, setPendingNomination] = useState<MovieData | null>(null);
-	const [shareOpen, setShareOpen] = useState(autoShare && Boolean(displayName));
-	const pendingAutoShare = useRef(autoShare && !displayName);
+	const [shareOpen, setShareOpen] = useState(autoShare);
 	const [confirmPhase, setConfirmPhase] = useState(false);
 	const [nameEditOpen, setNameEditOpen] = useState(false);
-	const [localDisplayName, setLocalDisplayName] = useState(displayName);
 	const [rankingDragActive, setRankingDragActive] = useState(false);
 	const [nominationDragOver, setNominationDragOver] = useState(false);
 	const [confirmRevoke, setConfirmRevoke] = useState<PeerId | null>(null);
@@ -1325,26 +1286,18 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 				<NameEditModal
 					current={currentUserName}
 					onSave={(name) => {
-						localStorage.setItem(storageKey('displayName'), name);
+						saveDisplayName(name);
 						setLocalDisplayName(name);
 						setNameEditOpen(false);
+						// Global rename: update the shared participant record in every
+						// poll this device knows, so everyone sees the new name. The
+						// current poll is also covered by usePoll's rename effect.
+						if (selfId) void renameEverywhere(selfId, name);
 					}}
 					onCancel={() => setNameEditOpen(false)}
 				/>
 			)}
 
-			{!displayName && onSetName && (
-				<NamePromptOverlay
-					isCreator={autoShare}
-					onSubmit={(name) => {
-						onSetName(name);
-						if (pendingAutoShare.current) {
-							pendingAutoShare.current = false;
-							setShareOpen(true);
-						}
-					}}
-				/>
-			)}
 		</div>
 	);
 				}

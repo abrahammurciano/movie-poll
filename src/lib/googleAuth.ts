@@ -22,10 +22,11 @@ import {
 	linkWithPopup,
 	onAuthStateChanged,
 	signInWithCredential,
+	signInWithPopup,
 	type AuthCredential,
 	type User,
 } from 'firebase/auth';
-import { auth } from '@/lib/firebase';
+import { auth, authReady } from '@/lib/firebase';
 
 const provider = new GoogleAuthProvider();
 
@@ -70,6 +71,40 @@ export async function linkGoogleAccount(): Promise<LinkGoogleResult> {
 }
 
 /**
+ * The first-run Google choice. Picks the right mechanism for the current
+ * session state:
+ * - anonymous session present: linkWithPopup upgrades it in place, so the
+ *   uid - and every poll membership, nomination, ballot and host role tied
+ *   to it - carries over;
+ * - no session at all (the normal first-run case): a plain Google sign-in,
+ *   so NO anonymous account is ever created for this visitor;
+ * - already Google-linked: a no-op.
+ *
+ * A credential-already-in-use collision is only possible on the link path;
+ * a fresh sign-in with an existing Google account simply recovers that
+ * identity. Cancellation and errors map to the same result type as
+ * linkGoogleAccount.
+ */
+export async function continueWithGoogle(): Promise<LinkGoogleResult> {
+	await authReady;
+	const current = auth.currentUser;
+	if (current) return linkGoogleAccount();
+	try {
+		const result = await signInWithPopup(auth, provider);
+		return { status: 'linked', user: result.user };
+	} catch (err) {
+		const code = (err as { code?: string }).code;
+		if (code === 'auth/popup-closed-by-user' || code === 'auth/cancelled-popup-request') {
+			return { status: 'cancelled' };
+		}
+		return {
+			status: 'error',
+			message: (err as Error).message || 'Google sign-in failed.',
+		};
+	}
+}
+
+/**
  * Signs in with a Google credential that is already linked to another user.
  * Only call this after the user explicitly confirms the identity switch.
  * The current anonymous identity and its poll participation are left intact
@@ -80,6 +115,19 @@ export async function linkGoogleAccount(): Promise<LinkGoogleResult> {
 export async function switchToGoogleCredential(credential: AuthCredential): Promise<User> {
 	const result = await signInWithCredential(auth, credential);
 	return result.user;
+}
+
+
+/**
+ * Picks the display name to use right after Google sign-in or linking: the
+ * Google profile name, falling back to the email's local part. The name
+ * stays editable afterwards through the usual name-edit UI.
+ */
+export function googleDisplayName(user: { displayName: string | null; email: string | null }): string {
+	const name = user.displayName?.trim();
+	if (name) return name;
+	const localPart = user.email?.split('@')[0]?.trim();
+	return localPart || 'Guest';
 }
 
 /** Subscribes to auth identity changes. Returns unsubscribe. */

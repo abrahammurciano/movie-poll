@@ -1,19 +1,20 @@
 /**
  * usePoll – central hook that owns the Firestore-backed poll.
  *
- * Signs the visitor in anonymously (uid = their peer identity), subscribes to
- * the poll's documents, and exposes the derived PollState plus action
+ * Waits for the visitor's chosen identity (uid = their peer identity),
+ * subscribes to the poll's documents, and exposes the derived PollState plus action
  * dispatchers. All writes go through Firestore security rules, so anything a
  * user is not allowed to do is rejected by the backend itself.
  */
 
-import { useEffect, useMemo, useState } from 'react';
-import { authReady } from '@/lib/firebase';
-import { storageKey } from '@/lib/identity';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { requireUser } from '@/lib/firebase';
 import {
 	advancePollPhase,
 	createPoll,
 	joinPoll,
+	renameParticipant,
+	registerPoll,
 	revokeParticipant,
 	setBallot,
 	setNominations,
@@ -22,10 +23,17 @@ import {
 } from '@/lib/pollStore';
 import { computeState } from '@/lib/pollState';
 import type { PollState } from '@/types';
+import type { CreatePollSettings } from '@/lib/pollSettings';
 import type { MovieData } from '@/components/MovieSearch';
 
-export function usePoll(pollCode: string, displayName: string, isHost: boolean) {
+export function usePoll(
+	pollCode: string,
+	displayName: string,
+	isHost: boolean,
+	createSettings?: Partial<CreatePollSettings>,
+) {
 	const [uid, setUid] = useState<string | null>(null);
+	const registeredRef = useRef(false);
 	const [docs, setDocs] = useState<PollDocs>({
 		poll: undefined,
 		participants: {},
@@ -35,7 +43,7 @@ export function usePoll(pollCode: string, displayName: string, isHost: boolean) 
 
 	useEffect(() => {
 		let alive = true;
-		authReady.then((id) => alive && setUid(id)).catch((e) => console.error('sign-in failed', e));
+		requireUser().then((u) => alive && setUid(u.uid)).catch((e) => console.error('sign-in failed', e));
 		return () => {
 			alive = false;
 		};
@@ -48,25 +56,55 @@ export function usePoll(pollCode: string, displayName: string, isHost: boolean) 
 	}, [uid, pollCode]);
 
 	// Create the poll when arriving as its creator and it does not exist yet.
+	// The settings come straight from the creation click (in memory), never
+	// from storage: once the poll doc exists, Firestore is authoritative.
 	useEffect(() => {
 		if (!uid || !isHost || docs.poll !== null) return;
-		const stored = localStorage.getItem(storageKey(`pollSettings.${pollCode}`));
-		const parsed = stored ? JSON.parse(stored) : {};
 		const settings = {
 			maxNominationsPerUser: 1,
 			deadlineMinutes: 10080,
 			votingMethod: 'irv' as const,
-			...parsed,
+			...createSettings,
 		};
 		createPoll(pollCode, uid, settings).catch((e) => console.error('create poll failed', e));
-	}, [uid, isHost, pollCode, docs.poll]);
+	}, [uid, isHost, pollCode, docs.poll, createSettings]);
 
-	// Join once the poll exists; a later name change re-joins to update it.
+	// Join once the poll exists. A later name change renames the shared
+	// participant record (keeping joinedAt) so everyone sees the new name.
 	useEffect(() => {
 		if (!uid || !displayName || !docs.poll) return;
 		const existing = docs.participants[uid];
-		if (existing && existing.name === displayName) return;
-		joinPoll(pollCode, uid, displayName).catch((e) => console.error('join poll failed', e));
+		if (!existing) {
+			void (async () => {
+				try {
+					await joinPoll(pollCode, uid, displayName);
+				} catch (e) {
+					console.error('join poll failed', e);
+					return;
+				}
+				// Record the poll in the account-level registry (the single
+				// source of truth for "my polls"). Best-effort: a failure
+				// must not affect the join.
+				registeredRef.current = true;
+				registerPoll(uid, pollCode, displayName).catch((e) =>
+					console.warn('poll registry write failed', e),
+				);
+			})();
+		} else {
+			if (existing.name !== displayName) {
+				renameParticipant(pollCode, uid, displayName).catch((e) =>
+					console.error('rename failed', e),
+				);
+			}
+			// Already a participant (e.g. a poll joined before the registry
+			// existed): make sure it is registered, once per page view.
+			if (!registeredRef.current) {
+				registeredRef.current = true;
+				registerPoll(uid, pollCode, displayName).catch((e) =>
+					console.warn('poll registry write failed', e),
+				);
+			}
+		}
 	}, [uid, displayName, pollCode, docs.poll, docs.participants]);
 
 	const state: PollState = useMemo(

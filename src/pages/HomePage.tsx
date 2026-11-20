@@ -1,8 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { SettingsModal } from '@/components/SettingsModal';
 import { GoogleSignIn } from '@/components/GoogleSignIn';
-import { storageKey } from '@/lib/identity';
+import { requireUser } from '@/lib/firebase';
+import { saveDisplayName } from '@/lib/identity';
+import { renameEverywhere } from '@/lib/pollStore';
 import { useKnownPolls } from '@/hooks/useKnownPolls';
 import {
 	loadPollSettings,
@@ -12,7 +14,7 @@ import {
 } from '@/lib/pollSettings';
 
 interface Props {
-	onJoin: (pollCode: string, displayName: string, isCreator: boolean) => void;
+	onJoin: (pollCode: string, displayName: string, isCreator: boolean, createSettings?: CreatePollSettings) => void;
 	initialCode?: string | null;
 	initialName?: string | null;
 }
@@ -58,6 +60,11 @@ function NameEditModal({ current, onSave, onCancel }: { current: string; onSave:
 
 export function HomePage({ onJoin, initialCode, initialName }: Props) {
 	const [name, setName] = useState(initialName ?? '');
+	// Follow an externally adopted name (e.g. the account-level registry
+	// resolving a canonical name set on another device).
+	useEffect(() => {
+		if (initialName) setName(initialName);
+	}, [initialName]);
 	const [nameEditOpen, setNameEditOpen] = useState(false);
 	const [code, setCode] = useState(initialCode ?? '');
 	const [settings, setSettings] = useState<CreatePollSettings>(loadPollSettings);
@@ -73,14 +80,16 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 		const trimmed = next.trim();
 		if (!trimmed) return;
 		setName(trimmed);
-		localStorage.setItem(storageKey('displayName'), trimmed);
+		saveDisplayName(trimmed);
 		setNameEditOpen(false);
+		// Global rename: update the shared participant record in every poll
+		// this device knows, so everyone sees the new name.
+		void requireUser().then((u) => renameEverywhere(u.uid, trimmed));
 	}
 
 	function handleCreate() {
 		const newCode = Math.random().toString(36).slice(2, 8).toUpperCase();
-		localStorage.setItem(storageKey(`pollSettings.${newCode}`), JSON.stringify(settings));
-		onJoin(newCode, name.trim(), true);
+		onJoin(newCode, name.trim(), true, settings);
 	}
 
 	function handleJoin() {

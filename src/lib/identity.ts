@@ -24,3 +24,18 @@ function sessionSuffix(): string {
 export function storageKey(key: string): string {
 	return `${PREFIX}${key}${sessionSuffix()}`;
 }
+
+/**
+ * The display-name cache. The account-level registry (users/{uid}) is the
+ * source of truth for the name; this mirrors it so the app can greet and
+ * prefill instantly before Firestore responds. All reads and writes of the
+ * cached name go through these helpers so there is exactly one key.
+ */
+export function loadDisplayName(): string {
+	return localStorage.getItem(storageKey('displayName'))?.trim() ?? '';
+}
+
+export function saveDisplayName(name: string): void {
+	if (!name.trim()) return;
+	localStorage.setItem(storageKey('displayName'), name.trim());
+}
