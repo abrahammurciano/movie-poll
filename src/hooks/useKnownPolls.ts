@@ -18,6 +18,8 @@ export interface PollSummary {
 	code: string;
 	phase: Phase;
 	winnerTitles: string[];
+	/** Host-chosen poll title, when set. */
+	title?: string;
 }
 
 export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: string) => void } {
@@ -44,7 +46,8 @@ export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: str
 				let latest: PollDocs | null = null;
 				const update = () => {
 					if (!latest || latest.poll === undefined) return;
-					if (latest.poll === null) {
+					const poll = latest.poll;
+					if (poll === null) {
 						// Poll is gone (never created or deleted): stop tracking it.
 						if (selfIdRef.current) {
 							unregisterPoll(selfIdRef.current, code).catch(() => {});
@@ -53,14 +56,14 @@ export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: str
 						return;
 					}
 					const state = computeState(
-						latest.poll,
+						poll,
 						latest.participants,
 						latest.nominations,
 						latest.ballots,
 					);
 					setSummaries((prev) => {
 						const next = prev.filter((s) => s.code !== code);
-						next.push({ code, phase: state.phase, winnerTitles: state.winner.map((m) => m.title) });
+						next.push({ code, phase: state.phase, winnerTitles: state.winner.map((m) => m.title), title: poll.settings?.title });
 						next.sort((a, b) => codes.indexOf(a.code) - codes.indexOf(b.code));
 						return [...next];
 					});

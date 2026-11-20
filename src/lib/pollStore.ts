@@ -115,6 +115,19 @@ export async function createPoll(
 	});
 }
 
+/**
+ * Set, edit or clear the poll's title (host only; the rules enforce this).
+ * Writes only settings.title, so it cannot touch any other poll state, and
+ * the change syncs live to every participant's poll page and home list.
+ * Pass null (or an empty string) to clear the title.
+ */
+export async function setPollTitle(code: string, title: string | null): Promise<void> {
+	const trimmed = title?.trim() ?? '';
+	await updateDoc(pollRef(code), {
+		'settings.title': trimmed ? trimmed.slice(0, 100) : deleteField(),
+	});
+}
+
 /** Join a poll as the signed-in user. Only used for the initial join: it
  * resets joinedAt, so renames go through renameParticipant instead. */
 export async function joinPoll(code: string, uid: string, name: string): Promise<void> {

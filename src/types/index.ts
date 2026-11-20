@@ -8,6 +8,8 @@ export type Phase = 'nominations' | 'voting' | 'results';
 
 export interface PollSettings {
 	hostId: PeerId;
+	/** Optional display title, set and edited by the host at any time. */
+	title?: string;
 	maxNominationsPerUser?: number;
 	/** Minutes after poll creation when voting closes automatically. Defaults to 1 week. */
 	deadlineMinutes?: number;

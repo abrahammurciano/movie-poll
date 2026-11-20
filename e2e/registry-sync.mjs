@@ -85,12 +85,28 @@ await dismissOverlays(A);
 const namesA1b = await peopleNames(A);
 ok('A sees rename in poll 1 too (cross-poll via registry)', namesA1b.includes('Emu Renamed'));
 
+// --- Host sets a title on poll 1; observer sees it live; homepage lists it ---
+await B.goto(BASE + '#/' + code1, { waitUntil: 'load' });
+await B.waitForTimeout(2500);
+await dismissOverlays(B);
+ok('B (non-host) has no settings/title-edit affordance', (await B.getByLabel('Poll settings').count()) === 0);
+await A.getByLabel('Poll settings').click();
+await A.locator('#editPollTitle').fill('Emulator Movie Night');
+await A.getByRole('button', { name: 'Save' }).click();
+await A.waitForTimeout(2500);
+const headA = await A.locator('header').innerText();
+ok('A (host) sees the new title in the header', headA.includes('Emulator Movie Night'));
+await B.waitForTimeout(1500);
+const headB = await B.locator('header').innerText();
+ok('B sees the new title live in the header', headB.includes('Emulator Movie Night'));
+
 // --- KEY: A wipes localStorage entirely; homepage restores both polls from registry ---
 await A.evaluate(() => localStorage.clear());
 await A.goto(BASE, { waitUntil: 'load' });
 await A.waitForTimeout(3500);
 const homeA = await A.locator('body').innerText();
 ok('after full local wipe, A homepage lists both polls from cloud registry', homeA.includes(code1) && homeA.includes(code2));
+ok('homepage list shows the poll title', homeA.includes('Emulator Movie Night'));
 ok('after wipe, no name gate (registry name adopted)', homeA.includes('Emu Alpha'));
 
 // --- register-on-open: B loses registry doc + localStorage; re-opening poll re-registers ---

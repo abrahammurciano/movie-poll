@@ -66,6 +66,8 @@ export function usePoll(
 			votingMethod: 'irv' as const,
 			...createSettings,
 		};
+		const title = createSettings?.title?.trim().slice(0, 100);
+		if (!title) delete settings.title;
 		createPoll(pollCode, uid, settings).catch((e) => console.error('create poll failed', e));
 	}, [uid, isHost, pollCode, docs.poll, createSettings]);
 

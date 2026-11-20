@@ -36,8 +36,12 @@ service cloud.firestore {
         && exists(/databases/$(database)/documents/polls/$(code)/participants/$(request.auth.uid));
     }
 
+    function validTitle(t) {
+      return t is string && t.size() >= 1 && t.size() <= 100;
+    }
+
     function validSettings(s) {
-      return s.keys().hasOnly(['hostId', 'maxNominationsPerUser', 'deadlineMinutes', 'votingMethod'])
+      return s.keys().hasOnly(['hostId', 'title', 'maxNominationsPerUser', 'deadlineMinutes', 'votingMethod'])
         && s.hostId is string
         // Required: nominations are capped against this value below.
         && s.maxNominationsPerUser is int
@@ -48,7 +52,8 @@ service cloud.firestore {
                 && s.deadlineMinutes >= 1
                 && s.deadlineMinutes <= 43200))
         && (!s.keys().hasAny(['votingMethod'])
-            || s.votingMethod in ['irv', 'borda', 'schulze', 'ranked-pairs']);
+            || s.votingMethod in ['irv', 'borda', 'schulze', 'ranked-pairs'])
+        && (!s.keys().hasAny(['title']) || validTitle(s.title));
     }
 
     function validMovie(m) {
@@ -104,6 +109,14 @@ service cloud.firestore {
         && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['phase'])
         && ((resource.data.phase == 'nominations' && request.resource.data.phase == 'voting')
          || (resource.data.phase == 'voting' && request.resource.data.phase == 'results'));
+
+      // Host only: set, edit or clear the poll title (settings.title), at
+      // any phase, and nothing else may change.
+      allow update: if isHost(code)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['settings'])
+        && request.resource.data.settings.diff(resource.data.settings).affectedKeys().hasOnly(['title'])
+        && (!request.resource.data.settings.keys().hasAny(['title'])
+            || validTitle(request.resource.data.settings.title));
 
       allow delete: if false;
 

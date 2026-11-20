@@ -9,6 +9,8 @@ import { storageKey } from '@/lib/identity';
 import type { VotingMethod } from '@/types';
 
 export interface CreatePollSettings {
+	/** Optional title for the poll being created. Never persisted as a default. */
+	title?: string;
 	maxNominationsPerUser: number;
 	/** Minutes after poll creation when voting closes automatically. */
 	deadlineMinutes: number;
@@ -36,7 +38,9 @@ export function loadPollSettings(): CreatePollSettings {
 }
 
 export function savePollSettings(settings: CreatePollSettings): void {
-	localStorage.setItem(KEY, JSON.stringify(settings));
+	// The title belongs to one poll, never to the reusable defaults.
+	const { title: _title, ...defaults } = settings;
+	localStorage.setItem(KEY, JSON.stringify(defaults));
 }
 
 export function settingsModified(settings: CreatePollSettings): boolean {

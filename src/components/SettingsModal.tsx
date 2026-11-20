@@ -48,6 +48,27 @@ export function SettingsModal({ isOpen, onClose, settings, onChange }: Props) {
 					<div className="space-y-2">
 						<label
 							className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+							htmlFor="pollTitle"
+						>
+							Poll title (optional)
+						</label>
+						<input
+							id="pollTitle"
+							type="text"
+							maxLength={100}
+							className="cinema-input"
+							placeholder="e.g. Friday Movie Night"
+							value={settings.title ?? ''}
+							onChange={(e) => onChange({ ...settings, title: e.target.value || undefined })}
+						/>
+						<p className="text-[11px] text-muted-foreground">
+							Only you (the host) can set or change it, and you can do so later too.
+						</p>
+					</div>
+
+					<div className="space-y-2">
+						<label
+							className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
 							htmlFor="maxNominations"
 						>
 							Max nominations per user

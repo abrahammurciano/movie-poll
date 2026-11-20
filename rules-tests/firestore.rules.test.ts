@@ -15,7 +15,7 @@ import {
 	initializeTestEnvironment,
 	type RulesTestEnvironment,
 } from '@firebase/rules-unit-testing';
-import { deleteDoc, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
+import { deleteDoc, deleteField, doc, getDoc, setDoc, updateDoc } from 'firebase/firestore';
 
 const PROJECT_ID = 'demo-movie-poll';
 const CODE = 'ABC123';
@@ -168,6 +168,73 @@ describe('phase transitions', () => {
 			updateDoc(doc(db, 'polls', CODE), { 'settings.maxNominationsPerUser': 99 }),
 		);
 		await assertFails(updateDoc(doc(db, 'polls', CODE), { hostId: 'mallory' }));
+	});
+});
+
+describe('poll title', () => {
+	beforeEach(() => seedPoll());
+
+	it('can be set at creation when valid', async () => {
+		const db = testEnv.authenticatedContext('host').firestore();
+		await assertSucceeds(
+			setDoc(doc(db, 'polls', 'NEW001'), {
+				hostId: 'host',
+				phase: 'nominations',
+				createdAt: Date.now(),
+				settings: {
+					hostId: 'host',
+					maxNominationsPerUser: 1,
+					deadlineMinutes: 10080,
+					votingMethod: 'irv',
+					title: 'Friday Movie Night',
+				},
+			}),
+		);
+	});
+
+	it('rejects bogus titles at creation', async () => {
+		const db = testEnv.authenticatedContext('host').firestore();
+		const attempt = (title: unknown) =>
+			setDoc(doc(db, 'polls', 'NEW002'), {
+				hostId: 'host',
+				phase: 'nominations',
+				createdAt: Date.now(),
+				settings: {
+					hostId: 'host',
+					maxNominationsPerUser: 1,
+					deadlineMinutes: 10080,
+					votingMethod: 'irv',
+					title,
+				},
+			});
+		await assertFails(attempt(''));
+		await assertFails(attempt('x'.repeat(101)));
+		await assertFails(attempt(42));
+	});
+
+	it('lets the host set, edit and clear the title after creation', async () => {
+		const db = testEnv.authenticatedContext('host').firestore();
+		await assertSucceeds(updateDoc(doc(db, 'polls', CODE), { 'settings.title': 'Friday Movie Night' }));
+		await assertSucceeds(updateDoc(doc(db, 'polls', CODE), { 'settings.title': 'Saturday Movie Night' }));
+		await assertSucceeds(updateDoc(doc(db, 'polls', CODE), { 'settings.title': deleteField() }));
+	});
+
+	it('rejects title edits by non-hosts', async () => {
+		const db = testEnv.authenticatedContext('mallory').firestore();
+		await assertFails(updateDoc(doc(db, 'polls', CODE), { 'settings.title': 'Hijacked' }));
+	});
+
+	it('rejects invalid title edits and smuggled settings changes', async () => {
+		const db = testEnv.authenticatedContext('host').firestore();
+		await assertFails(updateDoc(doc(db, 'polls', CODE), { 'settings.title': '' }));
+		await assertFails(updateDoc(doc(db, 'polls', CODE), { 'settings.title': 'x'.repeat(101) }));
+		// The title path must not become a backdoor to edit other settings.
+		await assertFails(
+			updateDoc(doc(db, 'polls', CODE), {
+				'settings.title': 'Fine',
+				'settings.maxNominationsPerUser': 99,
+			}),
+		);
 	});
 });
 
