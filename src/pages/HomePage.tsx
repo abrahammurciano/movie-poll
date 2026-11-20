@@ -1,8 +1,11 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { SettingsModal } from '@/components/SettingsModal';
 import { GoogleSignIn } from '@/components/GoogleSignIn';
+import { requireUser } from '@/lib/firebase';
 import { storageKey } from '@/lib/identity';
+import { getKnownPolls } from '@/lib/knownPolls';
+import { renameEverywhere } from '@/lib/pollStore';
 import { useKnownPolls } from '@/hooks/useKnownPolls';
 import {
 	loadPollSettings,
@@ -58,6 +61,11 @@ function NameEditModal({ current, onSave, onCancel }: { current: string; onSave:
 
 export function HomePage({ onJoin, initialCode, initialName }: Props) {
 	const [name, setName] = useState(initialName ?? '');
+	// Follow an externally adopted name (e.g. the account-level registry
+	// resolving a canonical name set on another device).
+	useEffect(() => {
+		if (initialName) setName(initialName);
+	}, [initialName]);
 	const [nameEditOpen, setNameEditOpen] = useState(false);
 	const [code, setCode] = useState(initialCode ?? '');
 	const [settings, setSettings] = useState<CreatePollSettings>(loadPollSettings);
@@ -75,6 +83,9 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 		setName(trimmed);
 		localStorage.setItem(storageKey('displayName'), trimmed);
 		setNameEditOpen(false);
+		// Global rename: update the shared participant record in every poll
+		// this device knows, so everyone sees the new name.
+		void requireUser().then((u) => renameEverywhere(u.uid, trimmed, getKnownPolls()));
 	}
 
 	function handleCreate() {
