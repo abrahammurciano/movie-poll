@@ -82,6 +82,19 @@ export async function switchToGoogleCredential(credential: AuthCredential): Prom
 	return result.user;
 }
 
+
+/**
+ * Picks the display name to use right after Google sign-in or linking: the
+ * Google profile name, falling back to the email's local part. The name
+ * stays editable afterwards through the usual name-edit UI.
+ */
+export function googleDisplayName(user: { displayName: string | null; email: string | null }): string {
+	const name = user.displayName?.trim();
+	if (name) return name;
+	const localPart = user.email?.split('@')[0]?.trim();
+	return localPart || 'Guest';
+}
+
 /** Subscribes to auth identity changes. Returns unsubscribe. */
 export function observeIdentity(
 	callback: (identity: { uid: string; isAnonymous: boolean; email: string | null } | null) => void,
@@ -89,4 +102,4 @@ export function observeIdentity(
 	return onAuthStateChanged(auth, (user) => {
 		callback(user ? { uid: user.uid, isAnonymous: user.isAnonymous, email: user.email } : null);
 	});
-}
+					}
