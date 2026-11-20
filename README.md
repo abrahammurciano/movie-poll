@@ -1,8 +1,6 @@
-# Movie Night Polls
+# Movie Poll
 
-A serverless, peer-to-peer movie voting app. Create a poll, nominate movies, and rank them — no account, no server, no data leaving your browser.
-
-**[Live demo →](https://abrahammurciano.github.io/movie-night-polls/)**
+A cloud-backed movie voting app. Create a poll, nominate movies, and rank them — no account, no sign-up form, shared state lives in Firebase.
 
 ## How it works
 
@@ -15,17 +13,24 @@ No sign-up required. The host controls phase transitions (nominations → voting
 
 ## Architecture
 
-The app is entirely client-side. Peers discover each other via [Nostr](https://nostr.com/) relays and then communicate directly over WebRTC using [Trystero](https://github.com/dmotz/trystero). The shared state is an append-only event log replicated across peers using [Yjs](https://github.com/yjs/yjs) CRDTs — so every peer always converges to the same state, even if they join late or messages arrive out of order.
+The app is a client-side SPA backed by Firebase:
 
-The Yjs document is also persisted to `localStorage`, so polls survive a page refresh.
+- **Anonymous Authentication** — every visitor is signed in anonymously; the issued uid is their identity in every poll.
+- **Cloud Firestore** — one document per poll (`polls/{code}`) plus `participants`, `nominations` and `ballots` subcollections, one document per user. Clients subscribe to live updates.
+- **Security rules** (`firestore.rules`) — all authorization is enforced server-side by Firestore, not by hiding buttons in the UI:
+  - only the host can advance the phase, one step at a time;
+  - users can only join/rename/leave as themselves;
+  - nominations and ballots can only be written by their owner, only during the matching phase, and nominations are capped by the poll settings;
+  - only the host can remove a participant (which also removes their nominations and ballot).
+
+The rules are tested against the Firestore emulator (`rules-tests/`), which verifies each forbidden action is actually rejected.
 
 ## Tech stack
 
 | | |
 |---|---|
 | [Vite](https://vite.dev/) + [React](https://react.dev/) | Build tooling and UI |
-| [Trystero](https://github.com/dmotz/trystero) (Nostr transport) | P2P peer discovery and WebRTC data channels |
-| [Yjs](https://github.com/yjs/yjs) | CRDT-based replicated event log |
+| [Firebase](https://firebase.google.com/) (Auth + Firestore) | Identity, storage and realtime sync |
 | [TMDB API](https://developer.themoviedb.org/) | Movie search, posters, metadata |
 | [Tailwind CSS](https://tailwindcss.com/) | Styling |
 
@@ -34,10 +39,21 @@ The Yjs document is also persisted to `localStorage`, so polls survive a page re
 ```sh
 npm install
 npm run dev
-npm run test
 ```
 
-To simulate multiple participants in one browser, open tabs with `?session=1`, `?session=2`, etc.
+The dev server expects a Firebase project; copy its web app config into
+`src/lib/firebaseConfig.ts`. To run fully locally instead, start the
+emulators and opt into them:
+
+```sh
+npx firebase emulators:start          # Firestore on :8080, Auth on :9099
+VITE_USE_FIREBASE_EMULATOR=1 npm run dev
+```
+
+```sh
+npm run test         # unit tests
+npm run test:rules   # security-rules tests against the Firestore emulator
+```
 
 ## Deployment
 
@@ -48,3 +64,5 @@ To deploy manually:
 ```sh
 npm run build   # outputs to dist/
 ```
+
+The security rules are deployed from `firestore.rules` (`firebase deploy --only firestore:rules`, or paste them in the Firebase console).

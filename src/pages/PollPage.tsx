@@ -64,8 +64,8 @@ function RankBanner({ rank }: { rank: number }) {
 			<div
 				className="absolute text-center font-bold leading-none whitespace-nowrap"
 				style={{
-					background: 'oklch(0.8 0.12 295 / 0.72)',
-					color: 'oklch(0.17 0.03 295)',
+					background: 'oklch(0.8 0.12 160 / 0.72)',
+					color: 'oklch(0.17 0.03 160)',
 					fontSize: '10px',
 					letterSpacing: '0.03em',
 					width: '60px',
@@ -149,8 +149,8 @@ function MovieDetailsModal({ movie, onClose, peerName, onNominate, userNominatio
 					<button
 						className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
 						style={{
-							background: 'oklch(0.8 0.12 295 / 0.15)',
-							color: 'oklch(0.8 0.12 295)',
+							background: 'oklch(0.8 0.12 160 / 0.15)',
+							color: 'oklch(0.8 0.12 160)',
 						}}
 						onClick={onClose}
 					>
@@ -160,8 +160,8 @@ function MovieDetailsModal({ movie, onClose, peerName, onNominate, userNominatio
 						<button
 							className="rounded-lg px-4 py-2 text-sm font-medium transition-colors"
 							style={{
-								background: 'oklch(0.8 0.12 295)',
-								color: 'oklch(0.17 0.03 295)',
+								background: 'oklch(0.8 0.12 160)',
+								color: 'oklch(0.17 0.03 160)',
 							}}
 							onClick={onNominate}
 						>
@@ -201,7 +201,7 @@ function MovieDetailsModal({ movie, onClose, peerName, onNominate, userNominatio
 
 						{rating && (
 							<p className="mt-2 text-sm">
-								<span className="font-semibold" style={{ color: 'oklch(0.8 0.12 295)' }}>
+								<span className="font-semibold" style={{ color: 'oklch(0.8 0.12 160)' }}>
 									★ {rating}
 								</span>
 								<span className="text-muted-foreground">/10</span>
@@ -214,7 +214,7 @@ function MovieDetailsModal({ movie, onClose, peerName, onNominate, userNominatio
 								target="_blank"
 								rel="noopener noreferrer"
 								className="mt-2 inline-flex items-center gap-1 text-sm font-medium hover:underline"
-								style={{ color: 'oklch(0.8 0.12 295)' }}
+								style={{ color: 'oklch(0.8 0.12 160)' }}
 							>
 								View on IMDb ↗
 							</a>
@@ -227,9 +227,9 @@ function MovieDetailsModal({ movie, onClose, peerName, onNominate, userNominatio
 										key={genre}
 										className="rounded-full px-2.5 py-1 text-xs font-medium"
 										style={{
-											background: 'oklch(0.8 0.12 295 / 0.12)',
-											color: 'oklch(0.8 0.12 295)',
-											border: '1px solid oklch(0.8 0.12 295 / 0.25)',
+											background: 'oklch(0.8 0.12 160 / 0.12)',
+											color: 'oklch(0.8 0.12 160)',
+											border: '1px solid oklch(0.8 0.12 160 / 0.25)',
 										}}
 									>
 										{genre}
@@ -277,8 +277,8 @@ function GenreTagsSm({ genreIds }: { genreIds: number[] }) {
 					key={genre}
 					className="rounded px-1.5 py-0.5 text-[10px] font-medium opacity-70"
 					style={{
-						background: 'oklch(0.8 0.12 295 / 0.1)',
-						color: 'oklch(0.8 0.12 295)',
+						background: 'oklch(0.8 0.12 160 / 0.1)',
+						color: 'oklch(0.8 0.12 160)',
 					}}
 				>
 					{genre}
@@ -304,7 +304,7 @@ function ShareModal({ pollCode, onClose }: { pollCode: string; onClose: () => vo
 	}
 
 	function shareUrl() {
-		navigator.share({ title: 'Movie Night Polls', url });
+		navigator.share({ title: 'Movie Poll', url });
 	}
 
 	return (
@@ -348,8 +348,8 @@ function ShareModal({ pollCode, onClose }: { pollCode: string; onClose: () => vo
 					<button
 						className="shrink-0 rounded px-2 py-1 text-xs font-medium transition-colors"
 						style={{
-							background: copied ? 'oklch(0.8 0.12 295 / 0.2)' : 'oklch(0.8 0.12 295 / 0.1)',
-							color: 'oklch(0.8 0.12 295)',
+							background: copied ? 'oklch(0.8 0.12 160 / 0.2)' : 'oklch(0.8 0.12 160 / 0.1)',
+							color: 'oklch(0.8 0.12 160)',
 						}}
 						onClick={copyUrl}
 					>
@@ -360,7 +360,7 @@ function ShareModal({ pollCode, onClose }: { pollCode: string; onClose: () => vo
 				{canShare && (
 					<button
 						className="w-full rounded-xl py-3 text-sm font-medium transition-colors"
-						style={{ background: 'oklch(0.8 0.12 295)', color: 'oklch(0.17 0.03 295)' }}
+						style={{ background: 'oklch(0.8 0.12 160)', color: 'oklch(0.17 0.03 160)' }}
 						onClick={shareUrl}
 					>
 						Share via…
@@ -399,7 +399,7 @@ function NameEditModal({ current, onSave, onCancel }: { current: string; onSave:
 					>Cancel</button>
 					<button
 						className="flex-1 rounded-xl py-2.5 text-sm font-semibold disabled:opacity-30"
-						style={{ background: 'oklch(0.8 0.12 295)', color: 'oklch(0.17 0.03 295)' }}
+						style={{ background: 'oklch(0.8 0.12 160)', color: 'oklch(0.17 0.03 160)' }}
 						disabled={!name.trim()}
 						onClick={() => name.trim() && onSave(name.trim())}
 					>Save</button>
@@ -464,7 +464,7 @@ function PhaseConfirmModal({
 					</button>
 					<button
 						className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-all disabled:opacity-30"
-						style={canConfirm ? { background: 'oklch(0.8 0.12 295)', color: 'oklch(0.17 0.03 295)' } : { background: 'oklch(1 0 0 / 0.07)', color: 'oklch(1 0 0 / 0.4)' }}
+						style={canConfirm ? { background: 'oklch(0.8 0.12 160)', color: 'oklch(0.17 0.03 160)' } : { background: 'oklch(1 0 0 / 0.07)', color: 'oklch(1 0 0 / 0.4)' }}
 						disabled={!canConfirm}
 						onClick={onConfirm}
 					>
@@ -509,7 +509,7 @@ function NamePromptOverlay({ onSubmit, isCreator = false }: { onSubmit: (name: s
 					/>
 					<button
 						className="w-full rounded-xl py-3 text-sm font-medium transition-colors disabled:opacity-40"
-						style={{ background: 'oklch(0.8 0.12 295)', color: 'oklch(0.17 0.03 295)' }}
+						style={{ background: 'oklch(0.8 0.12 160)', color: 'oklch(0.17 0.03 160)' }}
 						disabled={!name.trim()}
 						onClick={submit}
 					>
@@ -653,6 +653,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 		displayName,
 		isHost,
 	);
+	const amHost = state.hostId !== null && state.hostId === selfId;
 	const [ranking, setRanking] = useState<string[]>(() => {
 		try {
 			const stored = localStorage.getItem(storageKey(`ranking.${pollCode}`));
@@ -812,10 +813,10 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 				<div
 					className="flex h-20 w-20 items-center justify-center rounded-2xl text-4xl"
 					style={{
-						background: 'oklch(0.8 0.12 295 / 0.12)',
+						background: 'oklch(0.8 0.12 160 / 0.12)',
 						boxShadow:
-							'0 0 40px -8px oklch(0.8 0.12 295 / 0.5), inset 0 1px 0 oklch(1 0 0 / 0.08)',
-						border: '1px solid oklch(0.8 0.12 295 / 0.25)',
+							'0 0 40px -8px oklch(0.8 0.12 160 / 0.5), inset 0 1px 0 oklch(1 0 0 / 0.08)',
+						border: '1px solid oklch(0.8 0.12 160 / 0.25)',
 					}}
 				>
 					🏆
@@ -833,7 +834,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 													src={posterUrl(movie.posterPath, 'w92')}
 													alt={movie.title}
 													className="h-32 w-20 rounded-lg object-cover shadow-lg"
-													style={{ boxShadow: '0 0 30px -8px oklch(0.8 0.12 295 / 0.4)' }}
+													style={{ boxShadow: '0 0 30px -8px oklch(0.8 0.12 160 / 0.4)' }}
 												/>
 											) : (
 												<div
@@ -855,7 +856,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 								<div>
 									<p
 										className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em]"
-										style={{ color: 'oklch(0.8 0.12 295)' }}
+										style={{ color: 'oklch(0.8 0.12 160)' }}
 									>
 										It's a tie!
 									</p>
@@ -871,13 +872,13 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 										src={posterUrl(state.winner[0].posterPath, 'w185')}
 										alt={state.winner[0].title}
 										className="w-28 rounded-xl shadow-2xl"
-										style={{ boxShadow: '0 0 40px -10px oklch(0.8 0.12 295 / 0.4)' }}
+										style={{ boxShadow: '0 0 40px -10px oklch(0.8 0.12 160 / 0.4)' }}
 									/>
 								)}
 								<div>
 									<p
 										className="mb-1 text-[11px] font-semibold uppercase tracking-[0.2em]"
-										style={{ color: 'oklch(0.8 0.12 295)' }}
+										style={{ color: 'oklch(0.8 0.12 160)' }}
 									>
 										Tonight's pick
 									</p>
@@ -949,17 +950,17 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 					<p className="truncate text-sm text-foreground/90">
 						Hello, <button
 							className="font-bold underline-offset-2 hover:underline transition-all"
-							style={{ color: 'oklch(0.8 0.12 295)' }}
+							style={{ color: 'oklch(0.8 0.12 160)' }}
 							onClick={() => setNameEditOpen(true)}
-						>{currentUserName}</button>{isHost && <span className="ml-1">👑</span>}
+						>{currentUserName}</button>{amHost && <span className="ml-1">👑</span>}
 					</p>
 				</div>
 				<button
 					className="flex items-center gap-1.5 rounded-full pl-3 pr-2 py-1 font-mono text-xs font-semibold tracking-[0.18em] transition-colors"
 					style={{
-						background: 'oklch(0.8 0.12 295 / 0.12)',
-						color: 'oklch(0.8 0.12 295)',
-						border: '1px solid oklch(0.8 0.12 295 / 0.25)',
+						background: 'oklch(0.8 0.12 160 / 0.12)',
+						color: 'oklch(0.8 0.12 160)',
+						border: '1px solid oklch(0.8 0.12 160 / 0.25)',
 					}}
 					onClick={() => setShareOpen(true)}
 				>
@@ -975,9 +976,9 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 				<button
 					className="flex items-center gap-1.5 rounded-full px-4 py-1.5 text-xs font-semibold text-center transition-transform hover:scale-[1.03] active:scale-[0.98]"
 					style={{
-						background: 'oklch(0.8 0.12 295 / 0.12)',
-						color: 'oklch(0.8 0.12 295)',
-						border: '1px solid oklch(0.8 0.12 295 / 0.25)',
+						background: 'oklch(0.8 0.12 160 / 0.12)',
+						color: 'oklch(0.8 0.12 160)',
+						border: '1px solid oklch(0.8 0.12 160 / 0.25)',
 					}}
 					onClick={() => setPeopleOpen(true)}
 					title="View people in this poll"
@@ -999,8 +1000,8 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 				<section
 					className="glass-card p-4"
 					style={{
-						border: '1px solid oklch(0.8 0.12 295 / 0.4)',
-						background: 'oklch(0.8 0.12 295 / 0.09)',
+						border: '1px solid oklch(0.8 0.12 160 / 0.4)',
+						background: 'oklch(0.8 0.12 160 / 0.09)',
 					}}
 				>
 					<p className="text-center text-sm font-medium leading-relaxed">
@@ -1025,8 +1026,8 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 					<section
 						className="glass-card p-5 transition-colors"
 						style={{
-							borderColor: canRank && draggedId && !ranking.includes(draggedId) ? 'oklch(0.8 0.12 295 / 0.4)' : undefined,
-							background: canRank && draggedId && !ranking.includes(draggedId) ? 'oklch(0.8 0.12 295 / 0.06)' : undefined,
+							borderColor: canRank && draggedId && !ranking.includes(draggedId) ? 'oklch(0.8 0.12 160 / 0.4)' : undefined,
+							background: canRank && draggedId && !ranking.includes(draggedId) ? 'oklch(0.8 0.12 160 / 0.06)' : undefined,
 						}}
 						onDragOver={canRank ? handleRankingSectionDragOver : undefined}
 						onDragLeave={canRank ? handleRankingSectionDragLeave : undefined}
@@ -1037,7 +1038,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 								Your ranking
 							</p>
 							{hasVoted ? (
-								<span className="text-[10px] font-medium" style={{ color: 'oklch(0.8 0.12 295)' }}>✓ Submitted</span>
+								<span className="text-[10px] font-medium" style={{ color: 'oklch(0.8 0.12 160)' }}>✓ Submitted</span>
 							) : ranking.length > 0 && (
 								<p className="text-[10px] text-muted-foreground/50">{ranking.length} of {state.movies.length}</p>
 							)}
@@ -1055,7 +1056,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 								<li
 									key={key}
 									className="pointer-events-none rounded-xl border-2 border-dashed min-h-[100px] transition-all"
-									style={{ borderColor: 'oklch(0.8 0.12 295 / 0.5)', background: 'oklch(0.8 0.12 295 / 0.04)' }}
+									style={{ borderColor: 'oklch(0.8 0.12 160 / 0.5)', background: 'oklch(0.8 0.12 160 / 0.04)' }}
 								/>
 							);
 							if (displayRanking.length === 0 && !rankingDragActive) return (
@@ -1075,7 +1076,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 												key={id}
 												className="relative flex items-center gap-3 rounded-xl p-3 min-h-[100px] transition-all overflow-hidden"
 												style={{
-													background: 'oklch(0.8 0.12 295 / 0.08)',
+													background: 'oklch(0.8 0.12 160 / 0.08)',
 													cursor: canRank ? 'grab' : 'default',
 												}}
 												draggable={canRank}
@@ -1115,7 +1116,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 													<div className="mt-1 flex items-center gap-1.5">
 														{movie.year && <span className="text-xs text-muted-foreground">{movie.year}</span>}
 														{movie.rating && (
-															<span className="text-xs" style={{ color: 'oklch(0.8 0.12 295)' }}>
+															<span className="text-xs" style={{ color: 'oklch(0.8 0.12 160)' }}>
 																★ {Math.round(movie.rating * 10) / 10}
 															</span>
 														)}
@@ -1166,9 +1167,9 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 							<div
 								className="mt-4 rounded-xl p-3 text-center text-sm font-medium"
 								style={{
-									background: 'oklch(0.8 0.12 295 / 0.07)',
-									border: '1px solid oklch(0.8 0.12 295 / 0.18)',
-									color: 'oklch(0.8 0.12 295)',
+									background: 'oklch(0.8 0.12 160 / 0.07)',
+									border: '1px solid oklch(0.8 0.12 160 / 0.18)',
+									color: 'oklch(0.8 0.12 160)',
 								}}
 							>
 								✓ Ballot submitted — waiting for everyone else
@@ -1201,7 +1202,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 									key={movie.id}
 									className="flex items-center gap-3 rounded-xl p-3 transition-all min-h-[100px]"
 									style={{
-										background: 'oklch(0.8 0.12 295 / 0.08)',
+										background: 'oklch(0.8 0.12 160 / 0.08)',
 										opacity: draggedId === movie.id ? 0 : 1,
 										cursor: canRank ? 'grab' : 'default',
 									}}
@@ -1219,7 +1220,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 												<span className="text-xs text-muted-foreground">{movie.year}</span>
 											)}
 											{movie.rating && (
-												<span className="text-xs" style={{ color: 'oklch(0.8 0.12 295)' }}>
+												<span className="text-xs" style={{ color: 'oklch(0.8 0.12 160)' }}>
 													★ {Math.round(movie.rating * 10) / 10}
 												</span>
 											)}
@@ -1252,7 +1253,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 			{/* Footer */}
 			<footer className="px-5 pb-8 pt-2">
 
-				{isHost && state.phase === 'nominations' && (
+				{amHost && state.phase === 'nominations' && (
 					<Button
 						className="w-full rounded-xl font-semibold glow-amber transition-all hover:scale-[1.01] active:scale-[0.98]"
 						onClick={() => setConfirmPhase(true)}
@@ -1260,7 +1261,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 						Start voting →
 					</Button>
 				)}
-				{isHost && state.phase === 'voting' && (
+				{amHost && state.phase === 'voting' && (
 					<Button
 						variant="destructive"
 						className="w-full rounded-xl font-medium opacity-60 transition-opacity hover:opacity-100"
@@ -1309,7 +1310,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 					peers={state.peers}
 					hostId={state.hostId}
 					selfId={selfId}
-					isHost={isHost}
+					isHost={amHost}
 					phase={state.phase}
 					movies={state.movies}
 					ballots={state.ballots}

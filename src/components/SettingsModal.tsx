@@ -105,20 +105,20 @@ export function SettingsModal({ isOpen, onClose, settings, onChange }: Props) {
 											tabIndex={0}
 											className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 transition-colors"
 											style={{
-												background: selected ? 'oklch(0.8 0.12 295 / 0.12)' : 'oklch(1 0 0 / 0.04)',
-												border: selected ? '1px solid oklch(0.8 0.12 295 / 0.45)' : '1px solid oklch(1 0 0 / 0.08)',
+												background: selected ? 'oklch(0.8 0.12 160 / 0.12)' : 'oklch(1 0 0 / 0.04)',
+												border: selected ? '1px solid oklch(0.8 0.12 160 / 0.45)' : '1px solid oklch(1 0 0 / 0.08)',
 											}}
 											onClick={() => onChange({ ...settings, votingMethod: method })}
 											onKeyDown={(e) => e.key === 'Enter' && onChange({ ...settings, votingMethod: method })}
 										>
 											<span
 												className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full"
-												style={{ border: '2px solid oklch(0.8 0.12 295)' }}
+												style={{ border: '2px solid oklch(0.8 0.12 160)' }}
 											>
 												{selected && (
 													<span
 														className="h-2 w-2 rounded-full"
-														style={{ background: 'oklch(0.8 0.12 295)' }}
+														style={{ background: 'oklch(0.8 0.12 160)' }}
 													/>
 												)}
 											</span>
@@ -131,8 +131,8 @@ export function SettingsModal({ isOpen, onClose, settings, onChange }: Props) {
 											<button
 												className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full text-xs font-semibold transition-colors"
 												style={{
-													background: 'oklch(0.8 0.12 295 / 0.15)',
-													color: 'oklch(0.8 0.12 295)',
+													background: 'oklch(0.8 0.12 160 / 0.15)',
+													color: 'oklch(0.8 0.12 160)',
 												}}
 												title={`How ${meta.name} works`}
 												aria-label={`How ${meta.name} works`}
