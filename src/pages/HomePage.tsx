@@ -79,7 +79,7 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 
 	function handleCreate() {
 		const newCode = Math.random().toString(36).slice(2, 8).toUpperCase();
-		localStorage.setItem(`pollSettings.${newCode}`, JSON.stringify(settings));
+		localStorage.setItem(storageKey(`pollSettings.${newCode}`), JSON.stringify(settings));
 		onJoin(newCode, name.trim(), true);
 	}
 
