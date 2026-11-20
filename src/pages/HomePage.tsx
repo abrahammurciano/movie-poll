@@ -104,8 +104,8 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 			{/* Hero */}
 			<div className="mb-10 flex flex-col items-center gap-4 text-center">
 				<img
-					src={`${import.meta.env.BASE_URL}logo.svg`}
-					alt="Movie Night Polls logo"
+					src={`${import.meta.env.BASE_URL}logo-maskable.svg`}
+					alt="Movie Poll logo"
 					className="h-16 w-16 rounded-2xl"
 					style={{
 						boxShadow: '0 0 32px -8px oklch(0.8 0.12 160 / 0.4)',
@@ -117,7 +117,7 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 						className="text-4xl font-bold tracking-tight sm:text-5xl"
 						style={{ letterSpacing: '-0.03em' }}
 					>
-						Movie Night Polls
+						Movie Poll
 					</h1>
 					<p className="mt-1.5 text-sm text-muted-foreground">
 						Ranked choice voting &middot; cloud-synced &middot; no account needed

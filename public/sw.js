@@ -1,4 +1,4 @@
-// Movie Night Polls service worker: app-shell caching only.
+// Movie Poll service worker: app-shell caching only.
 // Firestore and all other cross-origin traffic bypasses this worker.
 const CACHE = 'movie-poll-shell-v1';
 const SHELL = ['./', './manifest.webmanifest', './logo.svg', './icons/icon-192.png'];
