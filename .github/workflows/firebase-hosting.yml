@@ -7,6 +7,11 @@ on:
       - firebase.json
       - 'hosting/**'
       - .github/workflows/firebase-hosting.yml
+  pull_request:
+    paths:
+      - firebase.json
+      - 'hosting/**'
+      - .github/workflows/firebase-hosting.yml
 
 permissions:
   contents: read
@@ -17,7 +22,28 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate hosting config
+        run: |
+          node -e '
+            const fs = require("fs");
+            const cfg = JSON.parse(fs.readFileSync("firebase.json", "utf8"));
+            if (!cfg.hosting) throw new Error("firebase.json has no hosting block");
+            const pub = cfg.hosting.public;
+            if (!pub || !fs.statSync(pub).isDirectory()) throw new Error(`hosting.public directory ${JSON.stringify(pub)} does not exist`);
+            if (cfg.hosting.rewrites) throw new Error("unexpected hosting rewrites (SPA config is retired)");
+            const html = fs.readFileSync(`${pub}/index.html`, "utf8");
+            if (!html.includes("abrahammurciano.github.io/movie-poll")) throw new Error(`${pub}/index.html is missing the Pages redirect target`);
+            console.log("hosting config valid:", pub);
+          '
+
   deploy:
+    needs: validate
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
