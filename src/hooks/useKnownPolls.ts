@@ -1,13 +1,16 @@
 /**
- * useKnownPolls – live summaries of every poll this device knows about.
+ * useKnownPolls – live summaries of every poll the user belongs to.
  *
- * Subscribes to each known poll's Firestore documents so the home page list
- * stays up to date. Polls that no longer exist are dropped from the list.
+ * Sources the poll list from the account-level registry (users/{uid}), so
+ * the home page shows polls joined on any device, merged with this device's
+ * known-polls history. Subscribes to each poll's Firestore documents so the
+ * list stays up to date. Polls that no longer exist are dropped from the
+ * list (and from local history).
  */
 
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { requireUser } from '@/lib/firebase';
-import { subscribePoll, type PollDocs } from '@/lib/pollStore';
+import { getUserProfile, subscribePoll, unregisterPoll, type PollDocs } from '@/lib/pollStore';
 import { computeState } from '@/lib/pollState';
 import { getKnownPolls, forgetPoll } from '@/lib/knownPolls';
 import type { Phase } from '@/types';
@@ -20,13 +23,26 @@ export interface PollSummary {
 
 export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: string) => void } {
 	const [summaries, setSummaries] = useState<PollSummary[]>([]);
+	const selfIdRef = useRef('');
 
 	useEffect(() => {
-		const codes = getKnownPolls();
 		const cleanups: Array<() => void> = [];
 		let cancelled = false;
 
-		requireUser().then((user) => {
+		requireUser().then(async (user) => {
+			if (cancelled) return;
+			selfIdRef.current = user.uid;
+			// Cloud registry first (covers polls joined on other devices),
+			// merged with this device's history (covers anything not yet
+			// registered, e.g. polls joined before the registry existed).
+			let codes = getKnownPolls();
+			try {
+				const profile = await getUserProfile(user.uid);
+				if (profile) codes = [...new Set([...profile.polls, ...codes])];
+			} catch {
+				// Registry unavailable (e.g. rules not yet deployed): the
+				// device's own history still drives the list.
+			}
 			if (cancelled) return;
 			for (const code of codes) {
 				let latest: PollDocs | null = null;
@@ -67,6 +83,11 @@ export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: str
 
 	function dismiss(code: string) {
 		forgetPoll(code);
+		if (selfIdRef.current) {
+			unregisterPoll(selfIdRef.current, code).catch((e) =>
+				console.warn('registry dismiss failed', e),
+			);
+		}
 		setSummaries((prev) => prev.filter((s) => s.code !== code));
 	}
 
