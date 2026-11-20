@@ -988,11 +988,11 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 						) : (
 							<span className="flex min-w-0 items-center gap-1.5">
 								<img
-									src={`${import.meta.env.BASE_URL}logo.svg`}
+									src={`${import.meta.env.BASE_URL}logo-maskable.svg`}
 									alt=""
 									className="h-5 w-5 flex-shrink-0 rounded"
 								/>
-								<span className="truncate">Movie Night Polls</span>
+								<span className="truncate">Movie Poll</span>
 							</span>
 						)}
 						{amHost && (
