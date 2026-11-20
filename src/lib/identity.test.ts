@@ -1,9 +1,9 @@
 /**
- * Tests for the repo-name localStorage namespace and the one-time migration
- * of legacy shared keys (`mnp.`, bare `pollSettings.`).
+ * Tests for the repo-name localStorage namespace.
  *
- * identity.ts runs its migration at module load, so each test stubs
- * window/localStorage and re-imports the module fresh.
+ * The app deliberately starts fresh: legacy keys shared with the other
+ * same-origin app (`mnp.`, bare `pollSettings.`) must be neither imported
+ * nor deleted.
  */
 
 import { beforeEach, describe, expect, it, vi } from 'vitest';
@@ -40,6 +40,8 @@ describe('storageKey', () => {
 		store = makeStorage();
 		const { storageKey } = await freshModule();
 		expect(storageKey('displayName')).toBe('movie-poll.displayName');
+		expect(storageKey('ranking.ABC123')).toBe('movie-poll.ranking.ABC123');
+		expect(storageKey('pollSettings.ABC123')).toBe('movie-poll.pollSettings.ABC123');
 	});
 
 	it('keeps the ?session=N suffix for dev tabs', async () => {
@@ -47,69 +49,35 @@ describe('storageKey', () => {
 		const { storageKey } = await freshModule('?session=2');
 		expect(storageKey('displayName')).toBe('movie-poll.displayName.s2');
 	});
+
+	it('never collides with the legacy shared keys', async () => {
+		store = makeStorage();
+		const { storageKey } = await freshModule();
+		expect(storageKey('displayName')).not.toBe('mnp.displayName');
+		expect(storageKey('pollSettings.ABC123')).not.toBe('pollSettings.ABC123');
+	});
 });
 
-describe('legacy key migration', () => {
-	it('copies mnp.* and pollSettings.* keys into the namespace', async () => {
+describe('legacy keys from the other same-origin app', () => {
+	it('are not imported (the app starts fresh)', async () => {
 		store = makeStorage({
 			'mnp.displayName': 'Abraham',
 			'mnp.polls': '["ABC123"]',
-			'mnp.ranking.ABC123': '["m1","m2"]',
-			'mnp.host.ABC123': '1',
 			'pollSettings.ABC123': '{"maxNominationsPerUser":2}',
 		});
 		await freshModule();
-		expect(store.getItem('movie-poll.displayName')).toBe('Abraham');
-		expect(store.getItem('movie-poll.polls')).toBe('["ABC123"]');
-		expect(store.getItem('movie-poll.ranking.ABC123')).toBe('["m1","m2"]');
-		expect(store.getItem('movie-poll.host.ABC123')).toBe('1');
-		expect(store.getItem('movie-poll.pollSettings.ABC123')).toBe(
-			'{"maxNominationsPerUser":2}',
-		);
+		expect(store.getItem('movie-poll.displayName')).toBeNull();
+		expect(store.getItem('movie-poll.polls')).toBeNull();
+		expect(store.getItem('movie-poll.pollSettings.ABC123')).toBeNull();
 	});
 
-	it('preserves session-suffixed legacy keys with their suffix', async () => {
-		store = makeStorage({ 'mnp.displayName.s2': 'DevTab' });
-		await freshModule();
-		expect(store.getItem('movie-poll.displayName.s2')).toBe('DevTab');
-	});
-
-	it('never deletes legacy keys (the other same-origin app still reads them)', async () => {
-		store = makeStorage({ 'mnp.displayName': 'Abraham' });
-		await freshModule();
-		expect(store.getItem('mnp.displayName')).toBe('Abraham');
-	});
-
-	it('does not clobber a value already written under the new namespace', async () => {
+	it('are not modified or deleted', async () => {
 		store = makeStorage({
-			'mnp.displayName': 'Old',
-			'movie-poll.displayName': 'New',
+			'mnp.displayName': 'Abraham',
+			'pollSettings.ABC123': '{"maxNominationsPerUser":2}',
 		});
 		await freshModule();
-		expect(store.getItem('movie-poll.displayName')).toBe('New');
-	});
-
-	it('leaves unrelated keys alone', async () => {
-		store = makeStorage({ 'other-app.setting': 'x', foo: 'y' });
-		await freshModule();
-		expect(store.getItem('other-app.setting')).toBe('x');
-		expect(store.getItem('movie-poll.foo')).toBeNull();
-	});
-
-	it('runs once: later legacy keys written by the other app are not imported', async () => {
-		store = makeStorage({ 'mnp.displayName': 'Abraham' });
-		await freshModule();
-		// The other same-origin app keeps writing its own keys afterwards.
-		store.setItem('mnp.ranking.NEW999', '["m3"]');
-		await freshModule();
-		expect(store.getItem('movie-poll.ranking.NEW999')).toBeNull();
-	});
-
-	it('does not resurrect namespaced data the user removed', async () => {
-		store = makeStorage({ 'mnp.displayName': 'Abraham' });
-		await freshModule();
-		store.removeItem('movie-poll.displayName');
-		await freshModule();
-		expect(store.getItem('movie-poll.displayName')).toBeNull();
+		expect(store.getItem('mnp.displayName')).toBe('Abraham');
+		expect(store.getItem('pollSettings.ABC123')).toBe('{"maxNominationsPerUser":2}');
 	});
 });
