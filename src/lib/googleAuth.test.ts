@@ -10,6 +10,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 const mockSignInWithCredential = vi.fn();
+const mockSignInWithPopup = vi.fn();
 const mockLinkWithPopup = vi.fn();
 const mockCredentialFromError = vi.fn();
 const mockOnAuthStateChanged = vi.fn(() => () => {});
@@ -22,17 +23,19 @@ vi.mock('firebase/auth', () => ({
 	},
 	linkWithPopup: (...args: unknown[]) => mockLinkWithPopup(...args),
 	signInWithCredential: (...args: unknown[]) => mockSignInWithCredential(...args),
+	signInWithPopup: (...args: unknown[]) => mockSignInWithPopup(...args),
 	onAuthStateChanged: (...args: unknown[]) => mockOnAuthStateChanged(...(args as [])),
 }));
 
 vi.mock('@/lib/firebase', () => ({
 	auth: { currentUser: { uid: 'anon-uid-1', isAnonymous: true, email: null } },
+	authReady: Promise.resolve(null),
 	firebaseApp: {},
 	db: {},
 }));
 
 import { auth } from '@/lib/firebase';
-import { googleDisplayName, linkGoogleAccount, switchToGoogleCredential } from '@/lib/googleAuth';
+import { continueWithGoogle, googleDisplayName, linkGoogleAccount, switchToGoogleCredential } from '@/lib/googleAuth';
 
 describe('googleAuth', () => {
 	beforeEach(() => {
@@ -108,6 +111,38 @@ describe('googleAuth', () => {
 		);
 		expect(mockSignInWithCredential).toHaveBeenCalledTimes(1);
 		expect(user.uid).toBe('google-uid-9');
+	});
+});
+
+describe('continueWithGoogle (first-run Google choice)', () => {
+	beforeEach(() => {
+		vi.clearAllMocks();
+		(auth as { currentUser: unknown }).currentUser = { uid: 'anon-uid-1', isAnonymous: true, email: null };
+	});
+
+	it('with NO existing session, signs in with Google directly - no anonymous account is created first', async () => {
+		(auth as { currentUser: unknown }).currentUser = null;
+		mockSignInWithPopup.mockResolvedValue({ user: { uid: 'google-uid-9', isAnonymous: false } });
+		const result = await continueWithGoogle();
+		expect(result).toEqual({ status: 'linked', user: { uid: 'google-uid-9', isAnonymous: false } });
+		expect(mockSignInWithPopup).toHaveBeenCalledTimes(1);
+		// The upgrade path must NOT run: there is nothing to upgrade.
+		expect(mockLinkWithPopup).not.toHaveBeenCalled();
+	});
+
+	it('with a restored anonymous session, links in place to preserve the uid', async () => {
+		mockLinkWithPopup.mockResolvedValue({ user: { uid: 'anon-uid-1', isAnonymous: false } });
+		const result = await continueWithGoogle();
+		expect(result).toEqual({ status: 'linked', user: { uid: 'anon-uid-1', isAnonymous: false } });
+		expect(mockLinkWithPopup).toHaveBeenCalledTimes(1);
+		expect(mockSignInWithPopup).not.toHaveBeenCalled();
+	});
+
+	it('closing the popup on a fresh sign-in is a quiet no-op', async () => {
+		(auth as { currentUser: unknown }).currentUser = null;
+		mockSignInWithPopup.mockRejectedValue({ code: 'auth/popup-closed-by-user' });
+		const result = await continueWithGoogle();
+		expect(result).toEqual({ status: 'cancelled' });
 	});
 });
 
