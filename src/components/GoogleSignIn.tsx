@@ -85,9 +85,14 @@ export function GoogleSignIn() {
 							before. Switching signs this browser in as that existing identity.
 						</p>
 						<p className="text-sm text-muted-foreground">
-							Your current anonymous identity keeps its polls, nominations, votes and
-							host roles; they are not transferred. This browser will simply act as
-							the Google identity from now on.
+							Your current anonymous identity's polls, nominations, votes and host
+							roles stay saved under that identity; they are not transferred to the
+							Google account.
+						</p>
+						<p className="text-sm text-muted-foreground">
+							Important: there is no way to sign back in to an anonymous identity.
+							After switching, this browser permanently loses access to it, including
+							host controls on any polls it created.
 						</p>
 						<div className="flex gap-3">
 							<button

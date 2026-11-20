@@ -73,7 +73,9 @@ export async function linkGoogleAccount(): Promise<LinkGoogleResult> {
  * Signs in with a Google credential that is already linked to another user.
  * Only call this after the user explicitly confirms the identity switch.
  * The current anonymous identity and its poll participation are left intact
- * under the old uid; this browser simply starts acting as the Google one.
+ * under the old uid, but anonymous accounts have no recovery credential:
+ * this browser permanently loses access to that identity (including host
+ * roles on polls it created) and starts acting as the Google one.
  */
 export async function switchToGoogleCredential(credential: AuthCredential): Promise<User> {
 	const result = await signInWithCredential(auth, credential);
