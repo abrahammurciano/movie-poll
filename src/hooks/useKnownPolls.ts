@@ -1,18 +1,17 @@
 /**
  * useKnownPolls – live summaries of every poll the user belongs to.
  *
- * Sources the poll list from the account-level registry (users/{uid}), so
- * the home page shows polls joined on any device, merged with this device's
- * known-polls history. Subscribes to each poll's Firestore documents so the
- * list stays up to date. Polls that no longer exist are dropped from the
- * list (and from local history).
+ * The account-level registry (users/{uid}) is the single source of truth
+ * for the list, so the home page shows polls joined on any device with no
+ * local history to drift out of sync. Subscribes to each poll's Firestore
+ * documents so the list stays up to date. Polls that no longer exist are
+ * dropped from the list and unregistered.
  */
 
 import { useEffect, useRef, useState } from 'react';
 import { requireUser } from '@/lib/firebase';
 import { getUserProfile, subscribePoll, unregisterPoll, type PollDocs } from '@/lib/pollStore';
 import { computeState } from '@/lib/pollState';
-import { getKnownPolls, forgetPoll } from '@/lib/knownPolls';
 import type { Phase } from '@/types';
 
 export interface PollSummary {
@@ -32,16 +31,13 @@ export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: str
 		requireUser().then(async (user) => {
 			if (cancelled) return;
 			selfIdRef.current = user.uid;
-			// Cloud registry first (covers polls joined on other devices),
-			// merged with this device's history (covers anything not yet
-			// registered, e.g. polls joined before the registry existed).
-			let codes = getKnownPolls();
+			let codes: string[] = [];
 			try {
 				const profile = await getUserProfile(user.uid);
-				if (profile) codes = [...new Set([...profile.polls, ...codes])];
+				codes = profile?.polls ?? [];
 			} catch {
-				// Registry unavailable (e.g. rules not yet deployed): the
-				// device's own history still drives the list.
+				// Registry unavailable (offline): nothing to list yet; the
+				// app requires connectivity for Firestore anyway.
 			}
 			if (cancelled) return;
 			for (const code of codes) {
@@ -50,7 +46,9 @@ export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: str
 					if (!latest || latest.poll === undefined) return;
 					if (latest.poll === null) {
 						// Poll is gone (never created or deleted): stop tracking it.
-						forgetPoll(code);
+						if (selfIdRef.current) {
+							unregisterPoll(selfIdRef.current, code).catch(() => {});
+						}
 						setSummaries((prev) => prev.filter((s) => s.code !== code));
 						return;
 					}
@@ -82,7 +80,6 @@ export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: str
 	}, []);
 
 	function dismiss(code: string) {
-		forgetPoll(code);
 		if (selfIdRef.current) {
 			unregisterPoll(selfIdRef.current, code).catch((e) =>
 				console.warn('registry dismiss failed', e),
