@@ -1,10 +1,15 @@
 /**
  * Firebase app singleton.
  *
- * Every visitor signs in anonymously; the resulting uid is their identity
- * (peerId) inside every poll. Firestore security rules key all write
- * authorization off request.auth.uid, so identity is enforced server-side
- * rather than by the UI.
+ * The uid Firebase Auth issues is the visitor's identity (peerId) inside
+ * every poll, and Firestore security rules key all write authorization off
+ * request.auth.uid, so identity is enforced server-side rather than by the UI.
+ *
+ * No account is created until the visitor explicitly chooses one: a
+ * first-time visitor is shown the account-choice gate (Google vs anonymous)
+ * BEFORE any sign-in happens, so nothing - not even an inert anonymous
+ * account - is decided for them. Returning browsers skip the gate: their
+ * session (anonymous or Google-linked) is restored from IndexedDB.
  */
 
 import { initializeApp } from 'firebase/app';
@@ -14,6 +19,7 @@ import {
 	onAuthStateChanged,
 	signInAnonymously,
 	type Auth,
+	type User,
 } from 'firebase/auth';
 import { connectFirestoreEmulator, getFirestore, type Firestore } from 'firebase/firestore';
 import { firebaseConfig } from '@/lib/firebaseConfig';
@@ -28,25 +34,18 @@ if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === '1') {
 }
 
 /**
- * Resolves once with the signed-in uid. The session is persisted in
- * IndexedDB, so a returning browser keeps the same uid (and thus its
- * identity in existing polls), including a Google-linked identity.
- *
- * Anonymous sign-in happens ONLY when no session was restored: calling it
- * eagerly would clobber a restored Google session with a fresh anonymous
- * account on every page load. The first onAuthStateChanged emission always
- * follows the persistence restore, so it is the safe decision point.
+ * Resolves once with the RESTORED session, or null for a first-time visitor.
+ * Never signs anyone in: anonymous sign-in only happens on the visitor's
+ * explicit choice (ensureAnonymousUser). The first onAuthStateChanged
+ * emission always follows the persistence restore, so it is the safe point
+ * to learn whether this browser already has an identity.
  */
-export const authReady: Promise<string> = new Promise((resolve, reject) => {
+export const authReady: Promise<User | null> = new Promise((resolve, reject) => {
 	const unsubscribe = onAuthStateChanged(
 		auth,
 		(user) => {
 			unsubscribe();
-			if (user) {
-				resolve(user.uid);
-			} else {
-				signInAnonymously(auth).then((cred) => resolve(cred.user.uid), reject);
-			}
+			resolve(user);
 		},
 		(error) => {
 			unsubscribe();
@@ -54,3 +53,41 @@ export const authReady: Promise<string> = new Promise((resolve, reject) => {
 		},
 	);
 });
+
+/**
+ * Resolves once a signed-in user actually exists. For a returning visitor
+ * this is immediate; for a first-time visitor it pends until they complete
+ * the explicit account choice (Google sign-in or anonymous creation).
+ * Firestore readers/writers must wait for this, so no poll read, create or
+ * join can happen before the choice.
+ */
+export async function requireUser(): Promise<User> {
+	const restored = await authReady;
+	if (restored) return restored;
+	return new Promise((resolve, reject) => {
+		const unsubscribe = onAuthStateChanged(
+			auth,
+			(user) => {
+				if (user) {
+					unsubscribe();
+					resolve(user);
+				}
+			},
+			(error) => {
+				unsubscribe();
+				reject(error);
+			},
+		);
+	});
+}
+
+/**
+ * Creates the anonymous account - but only when the visitor explicitly
+ * picked the anonymous option. If a session already exists (restored, or
+ * just created by a Google sign-in), it is returned untouched.
+ */
+export async function ensureAnonymousUser(): Promise<User> {
+	await authReady;
+	if (auth.currentUser) return auth.currentUser;
+	return (await signInAnonymously(auth)).user;
+}
