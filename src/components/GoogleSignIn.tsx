@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { GoogleLogo } from '@/components/GoogleLogo';
 import type { AuthCredential } from 'firebase/auth';
 import {
 	linkGoogleAccount,
@@ -61,12 +62,22 @@ export function GoogleSignIn() {
 	return (
 		<div className="mt-4 text-center">
 			<button
-				className="text-xs text-muted-foreground transition-colors hover:text-foreground hover:underline underline-offset-2 cursor-pointer disabled:opacity-40"
+				className="inline-flex items-center gap-2.5 rounded-xl px-4 py-2 text-xs font-medium transition-all hover:shadow-md cursor-pointer disabled:opacity-40"
+				style={{
+					background: '#ffffff',
+					color: '#1f1f1f',
+					border: '1px solid #dadce0',
+				}}
 				onClick={handleLink}
 				disabled={busy}
+				title="Keep your identity across devices"
 			>
-				{busy ? 'Signing in…' : 'Sign in with Google to keep your identity across devices'}
+				<GoogleLogo size={14} />
+				{busy ? 'Signing in…' : 'Sign in with Google'}
 			</button>
+			<p className="mt-1.5 text-[11px] text-muted-foreground">
+				Keep your identity across devices
+			</p>
 			{error && <p className="mt-2 text-xs" style={{ color: 'oklch(0.7 0.15 25)' }}>{error}</p>}
 
 			{pendingSwitch && (
