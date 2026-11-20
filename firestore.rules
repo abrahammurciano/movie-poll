@@ -155,6 +155,25 @@ service cloud.firestore {
       }
     }
 
+    // Per-account registry: the canonical display name plus every poll the
+    // account has created or joined. This is what makes a name change reach
+    // polls joined on other devices or before this browser stored history.
+    // Only the account owner may ever read or write it.
+    match /users/{uid} {
+      allow get: if authed() && request.auth.uid == uid;
+      allow list: if false;
+      allow create, update: if authed()
+        && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['name', 'polls'])
+        && (!request.resource.data.keys().hasAny(['name'])
+            || validName(request.resource.data.name))
+        && (!request.resource.data.keys().hasAny(['polls'])
+            || (request.resource.data.polls is map
+                && request.resource.data.polls.size() <= 500
+                && request.resource.data.polls.values().hasOnly([true])));
+      allow delete: if false;
+    }
+
     match /{document=**} {
       allow read, write: if false;
     }
