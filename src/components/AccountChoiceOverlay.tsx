@@ -79,7 +79,7 @@ export function AccountChoiceOverlay({ isCreator = false, onDone }: Props) {
 			<div className="glass-card w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-6 flex flex-col gap-5">
 				<div>
 					<p className="text-base font-semibold">
-						{isCreator ? 'Your poll is ready!' : "You've been invited!"}
+						{isCreator ? 'Your poll is ready!' : 'Welcome!'}
 					</p>
 					<p className="mt-1 text-sm text-muted-foreground">
 						Choose how you want to {isCreator ? 'share it' : 'join'}. This decides how your
@@ -117,7 +117,6 @@ export function AccountChoiceOverlay({ isCreator = false, onDone }: Props) {
 							className="cinema-input"
 							placeholder="Your name"
 							value={name}
-							autoFocus
 							onChange={(e) => setName(e.target.value)}
 							onKeyDown={(e) => e.key === 'Enter' && submitAnonymous()}
 						/>
