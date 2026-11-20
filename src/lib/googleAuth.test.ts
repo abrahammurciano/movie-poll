@@ -31,7 +31,7 @@ vi.mock('@/lib/firebase', () => ({
 	db: {},
 }));
 
-import { linkGoogleAccount, switchToGoogleCredential } from '@/lib/googleAuth';
+import { googleDisplayName, linkGoogleAccount, switchToGoogleCredential } from '@/lib/googleAuth';
 
 describe('googleAuth', () => {
 	beforeEach(() => {
@@ -84,5 +84,20 @@ describe('googleAuth', () => {
 		);
 		expect(mockSignInWithCredential).toHaveBeenCalledTimes(1);
 		expect(user.uid).toBe('google-uid-9');
+	});
+});
+
+describe('googleDisplayName', () => {
+	it('uses the Google profile name', () => {
+		expect(googleDisplayName({ displayName: 'Abraham Murciano', email: 'abrahammurciano@gmail.com' })).toBe('Abraham Murciano');
+	});
+
+	it('falls back to the email local part when the profile name is empty', () => {
+		expect(googleDisplayName({ displayName: '  ', email: 'abrahammurciano@gmail.com' })).toBe('abrahammurciano');
+		expect(googleDisplayName({ displayName: null, email: 'abrahammurciano@gmail.com' })).toBe('abrahammurciano');
+	});
+
+	it('falls back to Guest with neither name nor email', () => {
+		expect(googleDisplayName({ displayName: null, email: null })).toBe('Guest');
 	});
 });
