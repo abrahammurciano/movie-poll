@@ -95,4 +95,21 @@ describe('legacy key migration', () => {
 		expect(store.getItem('other-app.setting')).toBe('x');
 		expect(store.getItem('movie-poll.foo')).toBeNull();
 	});
+
+	it('runs once: later legacy keys written by the other app are not imported', async () => {
+		store = makeStorage({ 'mnp.displayName': 'Abraham' });
+		await freshModule();
+		// The other same-origin app keeps writing its own keys afterwards.
+		store.setItem('mnp.ranking.NEW999', '["m3"]');
+		await freshModule();
+		expect(store.getItem('movie-poll.ranking.NEW999')).toBeNull();
+	});
+
+	it('does not resurrect namespaced data the user removed', async () => {
+		store = makeStorage({ 'mnp.displayName': 'Abraham' });
+		await freshModule();
+		store.removeItem('movie-poll.displayName');
+		await freshModule();
+		expect(store.getItem('movie-poll.displayName')).toBeNull();
+	});
 });
