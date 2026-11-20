@@ -10,6 +10,8 @@ import { ChevronUp, ChevronDown, Users } from 'lucide-react';
 import type { Movie, PeerId } from '@/types';
 import type { Phase } from '@/types';
 import { storageKey } from '@/lib/identity';
+import { getKnownPolls } from '@/lib/knownPolls';
+import { renameEverywhere } from '@/lib/pollStore';
 
 function nominatorNames(nominatedBy: PeerId[], peers: Record<PeerId, { name: string }>): string {
 	return nominatedBy.map((id) => peers[id]?.name ?? '?').join(' & ');
@@ -603,9 +605,13 @@ function PeopleSheet({ peers, hostId, selfId, isHost, phase, movies, ballots, co
 }
 
 export function PollPage({ pollCode, displayName, autoShare = false, isHost = false, onLeave: _onLeave }: Props) {
+	const [localDisplayName, setLocalDisplayName] = useState(displayName);
+	// Follow an externally adopted name (e.g. the account-level registry
+	// resolving a canonical name set on another device).
+	useEffect(() => setLocalDisplayName(displayName), [displayName]);
 	const { state, selfId, nominateMovie, submitBallot, advancePhase, revokePeer } = usePoll(
 		pollCode,
-		displayName,
+		localDisplayName,
 		isHost,
 	);
 	const amHost = state.hostId !== null && state.hostId === selfId;
@@ -623,7 +629,6 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 	const [shareOpen, setShareOpen] = useState(autoShare);
 	const [confirmPhase, setConfirmPhase] = useState(false);
 	const [nameEditOpen, setNameEditOpen] = useState(false);
-	const [localDisplayName, setLocalDisplayName] = useState(displayName);
 	const [rankingDragActive, setRankingDragActive] = useState(false);
 	const [nominationDragOver, setNominationDragOver] = useState(false);
 	const [confirmRevoke, setConfirmRevoke] = useState<PeerId | null>(null);
@@ -1282,6 +1287,10 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 						localStorage.setItem(storageKey('displayName'), name);
 						setLocalDisplayName(name);
 						setNameEditOpen(false);
+						// Global rename: update the shared participant record in every
+						// poll this device knows, so everyone sees the new name. The
+						// current poll is also covered by usePoll's rename effect.
+						if (selfId) void renameEverywhere(selfId, name, getKnownPolls());
 					}}
 					onCancel={() => setNameEditOpen(false)}
 				/>
