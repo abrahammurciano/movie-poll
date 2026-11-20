@@ -6,7 +6,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { authReady } from '@/lib/firebase';
+import { requireUser } from '@/lib/firebase';
 import { subscribePoll, type PollDocs } from '@/lib/pollStore';
 import { computeState } from '@/lib/pollState';
 import { getKnownPolls, forgetPoll } from '@/lib/knownPolls';
@@ -26,7 +26,7 @@ export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: str
 		const cleanups: Array<() => void> = [];
 		let cancelled = false;
 
-		authReady.then((uid) => {
+		requireUser().then((user) => {
 			if (cancelled) return;
 			for (const code of codes) {
 				let latest: PollDocs | null = null;
@@ -51,7 +51,7 @@ export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: str
 						return [...next];
 					});
 				};
-				void uid;
+				void user;
 				cleanups.push(subscribePoll(code, (docs) => {
 					latest = docs;
 					update();
