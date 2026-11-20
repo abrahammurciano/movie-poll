@@ -89,9 +89,9 @@ ok('A sees rename in poll 1 too (cross-poll via registry)', namesA1b.includes('E
 await B.goto(BASE + '#/' + code1, { waitUntil: 'load' });
 await B.waitForTimeout(2500);
 await dismissOverlays(B);
-ok('B (non-host) has no title-edit affordance', (await B.getByLabel('Edit poll title').count()) === 0);
-await A.getByLabel('Edit poll title').click();
-await A.getByPlaceholder('Poll title (optional)').fill('Emulator Movie Night');
+ok('B (non-host) has no settings/title-edit affordance', (await B.getByLabel('Poll settings').count()) === 0);
+await A.getByLabel('Poll settings').click();
+await A.locator('#editPollTitle').fill('Emulator Movie Night');
 await A.getByRole('button', { name: 'Save' }).click();
 await A.waitForTimeout(2500);
 const headA = await A.locator('header').innerText();
