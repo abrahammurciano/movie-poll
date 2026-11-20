@@ -6,6 +6,10 @@
  *   polls/{code}/participants/{uid} -> { name, joinedAt }
  *   polls/{code}/nominations/{uid}  -> { movies: MovieData[] }
  *   polls/{code}/ballots/{uid}      -> { ranking: string[] }
+ *   users/{uid}                     -> { name?, polls: { [code]: true } }
+ *                                      (account-level registry: canonical
+ *                                      name + every poll joined, so renames
+ *                                      reach other devices too)
  *
  * All authorization (who may create, join, nominate, vote, advance the phase
  * or remove someone) is enforced server-side by firestore.rules. This module
@@ -16,6 +20,7 @@
 import {
 	collection,
 	doc,
+	getDoc,
 	onSnapshot,
 	setDoc,
 	updateDoc,
@@ -47,6 +52,9 @@ export function nominationsRef(code: string, uid: string) {
 }
 export function ballotRef(code: string, uid: string) {
 	return doc(polls, code, 'ballots', uid);
+}
+export function userRef(uid: string) {
+	return doc(db, 'users', uid);
 }
 
 function toPollDoc(data: DocumentData): PollDoc {
@@ -106,9 +114,79 @@ export async function createPoll(
 	});
 }
 
-/** Join (or re-join / rename in) a poll as the signed-in user. */
+/** Join a poll as the signed-in user. Only used for the initial join: it
+ * resets joinedAt, so renames go through renameParticipant instead. */
 export async function joinPoll(code: string, uid: string, name: string): Promise<void> {
 	await setDoc(participantRef(code, uid), { name, joinedAt: Date.now() });
+}
+
+/**
+ * Rename in a poll the user already joined. The rules allow a participant to
+ * update only their own name, and everyone subscribed to the poll sees the
+ * new name live.
+ */
+export async function renameParticipant(code: string, uid: string, name: string): Promise<void> {
+	await updateDoc(participantRef(code, uid), { name });
+}
+
+export interface UserProfile {
+	name?: string;
+	polls: string[];
+}
+
+/** Read the account-level registry doc (users/{uid}). null when absent. */
+export async function getUserProfile(uid: string): Promise<UserProfile | null> {
+	const snap = await getDoc(userRef(uid));
+	if (!snap.exists()) return null;
+	const data = snap.data();
+	return {
+		name: typeof data.name === 'string' ? data.name : undefined,
+		polls: Object.keys(data.polls ?? {}),
+	};
+}
+
+/**
+ * Remember a poll in the account-level registry, so name changes reach
+ * polls joined on other devices or before this browser stored history.
+ * The registry's name is written only when the doc is first created;
+ * renames update it through renameEverywhere, so a device with a stale
+ * local name cannot clobber the canonical one by joining a new poll.
+ */
+export async function registerPoll(uid: string, code: string, name: string): Promise<void> {
+	const existing = await getDoc(userRef(uid)).catch(() => null);
+	if (existing?.exists()) {
+		await setDoc(userRef(uid), { polls: { [code]: true } }, { merge: true });
+	} else {
+		await setDoc(userRef(uid), { name, polls: { [code]: true } }, { merge: true });
+	}
+}
+
+/**
+ * Propagates a name change so it is global rather than local: the shared
+ * participant record is updated in every poll the account has joined (from
+ * the users/{uid} registry, covering other devices) plus every poll this
+ * device knows about, and the registry's canonical name is updated too.
+ * Everyone subscribed to any of those polls sees the new name live. Polls
+ * where the user is not (or no longer) a participant are skipped by the
+ * rules and settled quietly.
+ */
+export async function renameEverywhere(
+	uid: string,
+	name: string,
+	localCodes: string[],
+): Promise<void> {
+	let registryCodes: string[] = [];
+	try {
+		const profile = await getUserProfile(uid);
+		registryCodes = profile?.polls ?? [];
+	} catch {
+		// Registry unreadable: fall back to this device's known polls only.
+	}
+	const codes = [...new Set([...localCodes, ...registryCodes])];
+	await Promise.allSettled([
+		...codes.map((code) => renameParticipant(code, uid, name)),
+		setDoc(userRef(uid), { name }, { merge: true }),
+	]);
 }
 
 export async function setNominations(
