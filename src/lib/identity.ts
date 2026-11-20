@@ -1,9 +1,10 @@
 /**
- * Persistent client identity.
+ * Local preference storage helpers.
  *
- * selfId is a stable UUID stored in localStorage so it survives page reloads.
- * storageKey() namespaces every key by ?session=N (default 0) so multiple
- * browser tabs can simulate independent users during development.
+ * Identity itself comes from Firebase anonymous auth (see firebase.ts); the
+ * uid it issues is the user's peerId in every poll. This module only keeps
+ * the storageKey() namespacing by ?session=N so multiple tabs can hold
+ * separate local preferences during development.
  */
 
 function sessionSuffix(): string {
@@ -14,12 +15,3 @@ function sessionSuffix(): string {
 export function storageKey(key: string): string {
 	return `mnp.${key}${sessionSuffix()}`;
 }
-
-export const selfId: string = (() => {
-	const key = storageKey('peerId');
-	const existing = localStorage.getItem(key);
-	if (existing) return existing;
-	const id = crypto.randomUUID();
-	localStorage.setItem(key, id);
-	return id;
-})();

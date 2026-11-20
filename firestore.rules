@@ -1,0 +1,162 @@
+rules_version = '2';
+
+// Movie Poll security rules.
+//
+// Authorization model (enforced here, not in the UI):
+//  - Everyone signs in anonymously; request.auth.uid is their identity.
+//  - A poll is created with hostId == creator's uid; only the host may
+//    advance the phase, and only one step forward at a time.
+//  - A user may only join / rename / leave as themselves.
+//  - A user may only write their own nominations and ballot, only during
+//    the matching phase, and nominations are capped by the poll settings.
+//  - Only the host may remove another participant (which also removes that
+//    person's nominations and ballot).
+//  - Reads require sign-in; anyone with the 6-character code can read the
+//    poll (same capability model as the P2P room it replaces).
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function authed() {
+      return request.auth != null;
+    }
+    function pollPath(code) {
+      return /databases/$(database)/documents/polls/$(code);
+    }
+    function pollExists(code) {
+      return exists(pollPath(code));
+    }
+    function pollData(code) {
+      return get(pollPath(code)).data;
+    }
+    function isHost(code) {
+      return authed() && pollExists(code) && pollData(code).hostId == request.auth.uid;
+    }
+    function isParticipant(code) {
+      return authed()
+        && exists(/databases/$(database)/documents/polls/$(code)/participants/$(request.auth.uid));
+    }
+
+    function validSettings(s) {
+      return s.keys().hasOnly(['hostId', 'maxNominationsPerUser', 'deadlineMinutes', 'votingMethod'])
+        && s.hostId is string
+        // Required: nominations are capped against this value below.
+        && s.maxNominationsPerUser is int
+        && s.maxNominationsPerUser >= 1
+        && s.maxNominationsPerUser <= 10
+        && (!s.keys().hasAny(['deadlineMinutes'])
+            || (s.deadlineMinutes is int
+                && s.deadlineMinutes >= 1
+                && s.deadlineMinutes <= 43200))
+        && (!s.keys().hasAny(['votingMethod'])
+            || s.votingMethod in ['irv', 'borda', 'schulze', 'ranked-pairs']);
+    }
+
+    function validMovie(m) {
+      return m.keys().hasOnly(['id', 'title', 'tmdbId', 'year', 'posterPath', 'genreIds', 'rating', 'overview'])
+        && m.id is string && m.id.size() >= 1 && m.id.size() <= 64
+        && m.title is string && m.title.size() >= 1 && m.title.size() <= 300
+        && (!m.keys().hasAny(['tmdbId']) || m.tmdbId is int)
+        && (!m.keys().hasAny(['year']) || (m.year is int && m.year >= 1888 && m.year <= 2200))
+        && (!m.keys().hasAny(['posterPath']) || (m.posterPath is string && m.posterPath.size() <= 200))
+        && (!m.keys().hasAny(['genreIds']) || (m.genreIds is list && m.genreIds.size() <= 20))
+        && (!m.keys().hasAny(['rating']) || m.rating is number)
+        && (!m.keys().hasAny(['overview']) || (m.overview is string && m.overview.size() <= 4000));
+    }
+
+    // The rules language has no iteration, so validate element-by-element up
+    // to the maximum list size the settings allow (10).
+    function validMovieList(movies) {
+      return movies is list
+        && movies.size() <= 10
+        && (movies.size() < 1 || validMovie(movies[0]))
+        && (movies.size() < 2 || validMovie(movies[1]))
+        && (movies.size() < 3 || validMovie(movies[2]))
+        && (movies.size() < 4 || validMovie(movies[3]))
+        && (movies.size() < 5 || validMovie(movies[4]))
+        && (movies.size() < 6 || validMovie(movies[5]))
+        && (movies.size() < 7 || validMovie(movies[6]))
+        && (movies.size() < 8 || validMovie(movies[7]))
+        && (movies.size() < 9 || validMovie(movies[8]))
+        && (movies.size() < 10 || validMovie(movies[9]));
+    }
+
+    function validName(name) {
+      return name is string && name.size() >= 1 && name.size() <= 60;
+    }
+
+    match /polls/{code} {
+      allow get: if authed();
+      // Enumerating every poll is never allowed; the code is the capability.
+      allow list: if false;
+
+      allow create: if authed()
+        && code.matches('^[A-Z0-9]{6}$')
+        && request.resource.data.keys().hasOnly(['hostId', 'phase', 'createdAt', 'settings'])
+        && request.resource.data.hostId == request.auth.uid
+        && request.resource.data.phase == 'nominations'
+        && request.resource.data.createdAt is int
+        && request.resource.data.createdAt <= request.time.toMillis()
+        && validSettings(request.resource.data.settings)
+        && request.resource.data.settings.hostId == request.auth.uid;
+
+      // Host only, one phase step forward, and nothing else may change.
+      allow update: if isHost(code)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['phase'])
+        && ((resource.data.phase == 'nominations' && request.resource.data.phase == 'voting')
+         || (resource.data.phase == 'voting' && request.resource.data.phase == 'results'));
+
+      allow delete: if false;
+
+      match /participants/{uid} {
+        allow get, list: if authed();
+        allow create: if authed()
+          && uid == request.auth.uid
+          && pollExists(code)
+          && request.resource.data.keys().hasOnly(['name', 'joinedAt'])
+          && validName(request.resource.data.name)
+          && request.resource.data.joinedAt is int
+          && request.resource.data.joinedAt <= request.time.toMillis();
+        // A participant may only rename themselves.
+        allow update: if authed()
+          && uid == request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['name'])
+          && validName(request.resource.data.name);
+        // Leaving (self) or host removal.
+        allow delete: if authed() && (uid == request.auth.uid || isHost(code));
+      }
+
+      match /nominations/{uid} {
+        allow get, list: if authed();
+        allow create, update: if authed()
+          && uid == request.auth.uid
+          && isParticipant(code)
+          && pollData(code).phase == 'nominations'
+          && request.resource.data.keys().hasOnly(['movies'])
+          && validMovieList(request.resource.data.movies)
+          && request.resource.data.movies.size()
+               <= pollData(code).settings.maxNominationsPerUser;
+        allow delete: if authed() && (uid == request.auth.uid || isHost(code));
+      }
+
+      match /ballots/{uid} {
+        allow get, list: if authed();
+        allow create, update: if authed()
+          && uid == request.auth.uid
+          && isParticipant(code)
+          && pollData(code).phase == 'voting'
+          && request.resource.data.keys().hasOnly(['ranking'])
+          && request.resource.data.ranking is list
+          && request.resource.data.ranking.size() >= 1
+          && request.resource.data.ranking.size() <= 500
+          // No duplicate entries: one rank per movie.
+          && request.resource.data.ranking.size()
+               == request.resource.data.ranking.toSet().size();
+        allow delete: if authed() && (uid == request.auth.uid || isHost(code));
+      }
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

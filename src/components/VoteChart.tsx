@@ -42,13 +42,13 @@ export function VoteChart({ movies, tally, eliminatedVotes, label = 'Final round
 						<div key={movie.id} className="flex flex-col gap-1">
 							<div className="flex items-baseline justify-between gap-2 min-w-0">
 								<span className="text-sm font-medium truncate">{movie.title}</span>
-								<span className="text-xs font-semibold flex-shrink-0" style={{ color: 'oklch(0.8 0.12 295)' }}>
+								<span className="text-xs font-semibold flex-shrink-0" style={{ color: 'oklch(0.8 0.12 160)' }}>
 									{total} vote{total !== 1 ? 's' : ''}
 								</span>
 							</div>
 							<div className="flex h-2 rounded-full overflow-hidden bg-white/5">
-								<div className="transition-all" style={{ background: 'oklch(0.8 0.12 295)', width: `${primaryPct}%` }} title={`Primary: ${votes.primary}`} />
-								<div className="transition-all" style={{ background: 'oklch(0.8 0.12 295 / 0.4)', width: `${transferredPct}%` }} title={`Transferred: ${votes.transferred}`} />
+								<div className="transition-all" style={{ background: 'oklch(0.8 0.12 160)', width: `${primaryPct}%` }} title={`Primary: ${votes.primary}`} />
+								<div className="transition-all" style={{ background: 'oklch(0.8 0.12 160 / 0.4)', width: `${transferredPct}%` }} title={`Transferred: ${votes.transferred}`} />
 							</div>
 							{votes.transferred > 0 && (
 								<div className="flex justify-between gap-2 text-[10px] text-muted-foreground">

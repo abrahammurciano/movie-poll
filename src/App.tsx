@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { HomePage } from '@/pages/HomePage';
 import { PollPage } from '@/pages/PollPage';
-import { storageKey, selfId } from '@/lib/identity';
+import { storageKey } from '@/lib/identity';
 import { rememberPoll } from '@/lib/knownPolls';
 
 interface Session {
@@ -21,7 +21,7 @@ function writeStoredDisplayName(name: string) {
 }
 
 function isStoredHost(pollCode: string): boolean {
-	return localStorage.getItem(storageKey(`host.${pollCode}`)) === selfId;
+	return localStorage.getItem(storageKey(`host.${pollCode}`)) === '1';
 }
 
 function codeFromPath(): string | null {
@@ -52,7 +52,7 @@ function App() {
 
 	function handleJoin(pollCode: string, displayName: string, isCreator: boolean) {
 		writeStoredDisplayName(displayName);
-		if (isCreator) localStorage.setItem(storageKey(`host.${pollCode}`), selfId);
+		if (isCreator) localStorage.setItem(storageKey(`host.${pollCode}`), '1');
 		const s = new URLSearchParams(window.location.search).get('session');
 		const qs = s && s !== '0' ? `?session=${s}` : '';
 		history.pushState(null, '', `${qs}#/${pollCode}`);

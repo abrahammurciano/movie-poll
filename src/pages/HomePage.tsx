@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { SettingsModal } from '@/components/SettingsModal';
+import { GoogleSignIn } from '@/components/GoogleSignIn';
 import { storageKey } from '@/lib/identity';
 import { useKnownPolls } from '@/hooks/useKnownPolls';
 import {
@@ -45,7 +46,7 @@ function NameEditModal({ current, onSave, onCancel }: { current: string; onSave:
 					>Cancel</button>
 					<button
 						className="flex-1 rounded-xl py-2.5 text-sm font-semibold disabled:opacity-30"
-						style={{ background: 'oklch(0.8 0.12 295)', color: 'oklch(0.17 0.03 295)' }}
+						style={{ background: 'oklch(0.8 0.12 160)', color: 'oklch(0.17 0.03 160)' }}
 						disabled={!name.trim()}
 						onClick={() => name.trim() && onSave(name.trim())}
 					>Save</button>
@@ -93,9 +94,9 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 				<div
 					className="flex h-16 w-16 items-center justify-center rounded-2xl text-3xl"
 					style={{
-						background: 'oklch(0.8 0.12 295 / 0.12)',
-						boxShadow: '0 0 32px -8px oklch(0.8 0.12 295 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.08)',
-						border: '1px solid oklch(0.8 0.12 295 / 0.22)',
+						background: 'oklch(0.8 0.12 160 / 0.12)',
+						boxShadow: '0 0 32px -8px oklch(0.8 0.12 160 / 0.4), inset 0 1px 0 oklch(1 0 0 / 0.08)',
+						border: '1px solid oklch(0.8 0.12 160 / 0.22)',
 					}}
 				>
 					🎬
@@ -109,7 +110,7 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 						Movie Night Polls
 					</h1>
 					<p className="mt-1.5 text-sm text-muted-foreground">
-						Ranked choice voting &middot; peer-to-peer &middot; no account needed
+						Ranked choice voting &middot; cloud-synced &middot; no account needed
 					</p>
 				</div>
 			</div>
@@ -122,7 +123,7 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 				{name.trim() ? (
 					<>
 						Hello,{' '}
-						<span className="font-semibold" style={{ color: 'oklch(0.8 0.12 295)' }}>
+						<span className="font-semibold" style={{ color: 'oklch(0.8 0.12 160)' }}>
 							{name.trim()}
 						</span>
 					</>
@@ -150,7 +151,7 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 							{settingsModified(settings) && (
 								<span
 									className="inline-block h-1.5 w-1.5 rounded-full"
-									style={{ background: 'oklch(0.8 0.12 295)' }}
+									style={{ background: 'oklch(0.8 0.12 160)' }}
 									title="You've customized the default settings"
 								/>
 							)}
@@ -195,6 +196,8 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 					</Button>
 				</div>
 			</div>
+
+			<GoogleSignIn />
 
 			{/* Existing polls on this device */}
 			{knownPolls.length > 0 && (

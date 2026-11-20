@@ -1,16 +1,14 @@
 /**
  * useKnownPolls – live summaries of every poll this device knows about.
  *
- * Joins the Trystero room of each known poll (unless it is already closed)
- * so the home page list stays up to date and this device helps relay P2P
- * state for those rooms. Rooms that turn out to be closed are left again.
+ * Subscribes to each known poll's Firestore documents so the home page list
+ * stays up to date. Polls that no longer exist are dropped from the list.
  */
 
 import { useEffect, useState } from 'react';
-import type { Room } from 'trystero';
-import { joinRoom } from '@/lib/trystero';
-import { createEventLog } from '@/lib/eventLog';
-import { storageKey } from '@/lib/identity';
+import { authReady } from '@/lib/firebase';
+import { subscribePoll, type PollDocs } from '@/lib/pollStore';
+import { computeState } from '@/lib/pollState';
 import { getKnownPolls, forgetPoll } from '@/lib/knownPolls';
 import type { Phase } from '@/types';
 
@@ -26,39 +24,45 @@ export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: str
 	useEffect(() => {
 		const codes = getKnownPolls();
 		const cleanups: Array<() => void> = [];
+		let cancelled = false;
 
-		for (const code of codes) {
-			const log = createEventLog(storageKey(`yjs.${code}`));
-			let room: Room | null = null;
-
-			const update = () => {
-				const state = log.getState();
-				setSummaries((prev) => {
-					const next = prev.filter((s) => s.code !== code);
-					next.push({ code, phase: state.phase, winnerTitles: state.winner.map((m) => m.title) });
-					next.sort((a, b) => codes.indexOf(a.code) - codes.indexOf(b.code));
-					return [...next];
-				});
-				// Leave the room once we learn the poll is closed
-				if (state.phase === 'results' && room) {
-					room.leave();
-					room = null;
-				}
-			};
-
-			update();
-			const unsubscribe = log.subscribe(update);
-			cleanups.push(unsubscribe);
-
-			// Only join rooms that are not already closed locally
-			if (log.getState().phase !== 'results') {
-				room = joinRoom(code);
-				log.connectRoom(room);
-				cleanups.push(() => { if (room) room.leave(); });
+		authReady.then((uid) => {
+			if (cancelled) return;
+			for (const code of codes) {
+				let latest: PollDocs | null = null;
+				const update = () => {
+					if (!latest || latest.poll === undefined) return;
+					if (latest.poll === null) {
+						// Poll is gone (never created or deleted): stop tracking it.
+						forgetPoll(code);
+						setSummaries((prev) => prev.filter((s) => s.code !== code));
+						return;
+					}
+					const state = computeState(
+						latest.poll,
+						latest.participants,
+						latest.nominations,
+						latest.ballots,
+					);
+					setSummaries((prev) => {
+						const next = prev.filter((s) => s.code !== code);
+						next.push({ code, phase: state.phase, winnerTitles: state.winner.map((m) => m.title) });
+						next.sort((a, b) => codes.indexOf(a.code) - codes.indexOf(b.code));
+						return [...next];
+					});
+				};
+				void uid;
+				cleanups.push(subscribePoll(code, (docs) => {
+					latest = docs;
+					update();
+				}));
 			}
-		}
+		});
 
-		return () => cleanups.forEach((fn) => fn());
+		return () => {
+			cancelled = true;
+			cleanups.forEach((fn) => fn());
+		};
 	}, []);
 
 	function dismiss(code: string) {
