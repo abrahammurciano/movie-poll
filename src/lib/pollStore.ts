@@ -19,6 +19,7 @@
 
 import {
 	collection,
+	deleteField,
 	doc,
 	getDoc,
 	onSnapshot,
@@ -127,6 +128,12 @@ export async function joinPoll(code: string, uid: string, name: string): Promise
  */
 export async function renameParticipant(code: string, uid: string, name: string): Promise<void> {
 	await updateDoc(participantRef(code, uid), { name });
+}
+
+/** Remove a poll from the account-level registry (e.g. dismissed on the
+ * home page). Mirrors forgetPoll in local known-polls history. */
+export async function unregisterPoll(uid: string, code: string): Promise<void> {
+	await setDoc(userRef(uid), { polls: { [code]: deleteField() } }, { merge: true });
 }
 
 export interface UserProfile {
