@@ -374,8 +374,23 @@ function ShareModal({ pollCode, onClose }: { pollCode: string; onClose: () => vo
 	);
 }
 
-function TitleEditModal({ current, onSave, onCancel }: { current: string; onSave: (title: string) => void; onCancel: () => void }) {
-	const [title, setTitle] = useState(current);
+function PollSettingsModal({
+	currentTitle,
+	settings,
+	onSave,
+	onCancel,
+}: {
+	currentTitle: string;
+	settings: { maxNominationsPerUser: number; deadlineMinutes: number; votingMethod: string } | null;
+	onSave: (title: string) => void;
+	onCancel: () => void;
+}) {
+	const [title, setTitle] = useState(currentTitle);
+	const deadlineLabel = (minutes: number) => {
+		if (minutes < 1440) return `${minutes} minutes`;
+		const days = Math.round(minutes / 1440);
+		return days >= 7 && days % 7 === 0 ? `${days / 7} week${days === 7 ? '' : 's'}` : `${days} day${days === 1 ? '' : 's'}`;
+	};
 	return (
 		<div
 			className="fixed inset-0 z-50 flex items-end md:items-center justify-center p-0 md:p-4"
@@ -386,19 +401,36 @@ function TitleEditModal({ current, onSave, onCancel }: { current: string; onSave
 				className="glass-card w-full md:max-w-sm rounded-t-2xl md:rounded-2xl p-6 flex flex-col gap-4"
 				onClick={(e) => e.stopPropagation()}
 			>
-				<p className="font-semibold text-base">Poll title</p>
-				<input
-					className="cinema-input"
-					value={title}
-					maxLength={100}
-					autoFocus
-					placeholder="Poll title (optional)"
-					onChange={(e) => setTitle(e.target.value)}
-					onKeyDown={(e) => { if (e.key === 'Enter') onSave(title.trim()); }}
-				/>
-				<p className="text-[11px] text-muted-foreground">
-					Only you (the host) can set or change it. Everyone sees updates right away. Leave it empty to remove the title.
-				</p>
+				<p className="font-semibold text-base">Poll settings</p>
+				<div className="space-y-2">
+					<label
+						className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground"
+						htmlFor="editPollTitle"
+					>
+						Poll title (optional)
+					</label>
+					<input
+						id="editPollTitle"
+						className="cinema-input"
+						value={title}
+						maxLength={100}
+						autoFocus
+						placeholder="e.g. Friday Movie Night"
+						onChange={(e) => setTitle(e.target.value)}
+						onKeyDown={(e) => { if (e.key === 'Enter') onSave(title.trim()); }}
+					/>
+					<p className="text-[11px] text-muted-foreground">
+						Only you (the host) can set or change it. Everyone sees updates right away. Leave it empty to remove the title.
+					</p>
+				</div>
+				{settings && (
+					<div className="space-y-1.5 rounded-xl p-3 text-xs text-muted-foreground" style={{ background: 'oklch(1 0 0 / 0.04)' }}>
+						<p className="flex justify-between"><span>Max nominations per person</span><span className="font-medium text-foreground/80">{settings.maxNominationsPerUser}</span></p>
+						<p className="flex justify-between"><span>Voting deadline</span><span className="font-medium text-foreground/80">{deadlineLabel(settings.deadlineMinutes)}</span></p>
+						<p className="flex justify-between"><span>Voting method</span><span className="font-medium text-foreground/80">{settings.votingMethod.toUpperCase()}</span></p>
+						<p className="pt-1 text-[10px] opacity-70">These are fixed once the poll is created.</p>
+					</div>
+				)}
 				<div className="flex gap-3">
 					<button
 						className="flex-1 rounded-xl py-2.5 text-sm font-medium"
@@ -956,8 +988,8 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 							<button
 								className="flex-shrink-0 rounded p-0.5 opacity-50 transition-opacity hover:opacity-100"
 								onClick={() => setTitleEditOpen(true)}
-								title="Edit poll title"
-								aria-label="Edit poll title"
+								title="Poll settings"
+								aria-label="Poll settings"
 							>
 								<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-3.5 h-3.5">
 									<path d="M13.586 3.586a2 2 0 1 1 2.828 2.828l-8.5 8.5a2 2 0 0 1-.878.513l-3 1a.5.5 0 0 1-.622-.622l1-3a2 2 0 0 1 .513-.878l8.5-8.5Z" />
@@ -1340,8 +1372,13 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 			)}
 
 			{titleEditOpen && (
-				<TitleEditModal
-					current={state.settings?.title ?? ''}
+				<PollSettingsModal
+					currentTitle={state.settings?.title ?? ''}
+					settings={state.settings ? {
+						maxNominationsPerUser: state.settings.maxNominationsPerUser ?? 1,
+						deadlineMinutes: state.settings.deadlineMinutes ?? 10080,
+						votingMethod: state.settings.votingMethod ?? 'irv',
+					} : null}
 					onSave={(title) => {
 						setTitleEditOpen(false);
 						if (amHost) void setPollTitle(pollCode, title || null).catch((e) => console.error('set title failed', e));
