@@ -28,17 +28,24 @@ if (import.meta.env.VITE_USE_FIREBASE_EMULATOR === '1') {
 }
 
 /**
- * Resolves once with the signed-in anonymous uid. The session is persisted
- * in IndexedDB, so a returning browser keeps the same uid (and thus its
- * identity in existing polls).
+ * Resolves once with the signed-in uid. The session is persisted in
+ * IndexedDB, so a returning browser keeps the same uid (and thus its
+ * identity in existing polls), including a Google-linked identity.
+ *
+ * Anonymous sign-in happens ONLY when no session was restored: calling it
+ * eagerly would clobber a restored Google session with a fresh anonymous
+ * account on every page load. The first onAuthStateChanged emission always
+ * follows the persistence restore, so it is the safe decision point.
  */
 export const authReady: Promise<string> = new Promise((resolve, reject) => {
 	const unsubscribe = onAuthStateChanged(
 		auth,
 		(user) => {
+			unsubscribe();
 			if (user) {
-				unsubscribe();
 				resolve(user.uid);
+			} else {
+				signInAnonymously(auth).then((cred) => resolve(cred.user.uid), reject);
 			}
 		},
 		(error) => {
@@ -46,7 +53,4 @@ export const authReady: Promise<string> = new Promise((resolve, reject) => {
 			reject(error);
 		},
 	);
-	signInAnonymously(auth).catch(() => {
-		/* onAuthStateChanged surfaces the error */
-	});
 });
