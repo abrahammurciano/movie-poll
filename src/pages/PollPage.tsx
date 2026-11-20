@@ -9,7 +9,6 @@ import { QRCodeSVG } from 'qrcode.react';
 import { ChevronUp, ChevronDown, Users } from 'lucide-react';
 import type { Movie, PeerId } from '@/types';
 import type { Phase } from '@/types';
-import { AccountChoiceOverlay } from '@/components/AccountChoiceOverlay';
 import { storageKey } from '@/lib/identity';
 
 function nominatorNames(nominatedBy: PeerId[], peers: Record<PeerId, { name: string }>): string {
@@ -603,7 +602,7 @@ function PeopleSheet({ peers, hostId, selfId, isHost, phase, movies, ballots, co
 	);
 }
 
-export function PollPage({ pollCode, displayName, autoShare = false, isHost = false, onLeave: _onLeave, onSetName }: Props) {
+export function PollPage({ pollCode, displayName, autoShare = false, isHost = false, onLeave: _onLeave }: Props) {
 	const { state, selfId, nominateMovie, submitBallot, advancePhase, revokePeer } = usePoll(
 		pollCode,
 		displayName,
@@ -621,8 +620,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 	const dragStartTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
 	const [selectedMovie, setSelectedMovie] = useState<Movie | null>(null);
 	const [pendingNomination, setPendingNomination] = useState<MovieData | null>(null);
-	const [shareOpen, setShareOpen] = useState(autoShare && Boolean(displayName));
-	const pendingAutoShare = useRef(autoShare && !displayName);
+	const [shareOpen, setShareOpen] = useState(autoShare);
 	const [confirmPhase, setConfirmPhase] = useState(false);
 	const [nameEditOpen, setNameEditOpen] = useState(false);
 	const [localDisplayName, setLocalDisplayName] = useState(displayName);
@@ -1289,18 +1287,6 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 				/>
 			)}
 
-			{!displayName && onSetName && (
-				<AccountChoiceOverlay
-					isCreator={autoShare}
-					onDone={(name) => {
-						onSetName(name);
-						if (pendingAutoShare.current) {
-							pendingAutoShare.current = false;
-							setShareOpen(true);
-						}
-					}}
-				/>
-			)}
 		</div>
 	);
 				}
