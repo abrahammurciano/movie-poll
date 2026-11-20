@@ -1,14 +1,14 @@
 /**
  * usePoll – central hook that owns the Firestore-backed poll.
  *
- * Signs the visitor in anonymously (uid = their peer identity), subscribes to
- * the poll's documents, and exposes the derived PollState plus action
+ * Waits for the visitor's chosen identity (uid = their peer identity),
+ * subscribes to the poll's documents, and exposes the derived PollState plus action
  * dispatchers. All writes go through Firestore security rules, so anything a
  * user is not allowed to do is rejected by the backend itself.
  */
 
 import { useEffect, useMemo, useState } from 'react';
-import { authReady } from '@/lib/firebase';
+import { requireUser } from '@/lib/firebase';
 import { storageKey } from '@/lib/identity';
 import {
 	advancePollPhase,
@@ -35,7 +35,7 @@ export function usePoll(pollCode: string, displayName: string, isHost: boolean) 
 
 	useEffect(() => {
 		let alive = true;
-		authReady.then((id) => alive && setUid(id)).catch((e) => console.error('sign-in failed', e));
+		requireUser().then((u) => alive && setUid(u.uid)).catch((e) => console.error('sign-in failed', e));
 		return () => {
 			alive = false;
 		};
