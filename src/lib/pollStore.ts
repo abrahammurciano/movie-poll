@@ -131,7 +131,7 @@ export async function renameParticipant(code: string, uid: string, name: string)
 }
 
 /** Remove a poll from the account-level registry (e.g. dismissed on the
- * home page). Mirrors forgetPoll in local known-polls history. */
+ * home page, or the poll no longer exists). */
 export async function unregisterPoll(uid: string, code: string): Promise<void> {
 	await setDoc(userRef(uid), { polls: { [code]: deleteField() } }, { merge: true });
 }
@@ -171,25 +171,20 @@ export async function registerPoll(uid: string, code: string, name: string): Pro
 /**
  * Propagates a name change so it is global rather than local: the shared
  * participant record is updated in every poll the account has joined (from
- * the users/{uid} registry, covering other devices) plus every poll this
- * device knows about, and the registry's canonical name is updated too.
- * Everyone subscribed to any of those polls sees the new name live. Polls
- * where the user is not (or no longer) a participant are skipped by the
- * rules and settled quietly.
+ * the users/{uid} registry, covering every device), and the registry's
+ * canonical name is updated too. Everyone subscribed to any of those polls
+ * sees the new name live. Polls where the user is not (or no longer) a
+ * participant are skipped by the rules and settled quietly.
  */
-export async function renameEverywhere(
-	uid: string,
-	name: string,
-	localCodes: string[],
-): Promise<void> {
-	let registryCodes: string[] = [];
+export async function renameEverywhere(uid: string, name: string): Promise<void> {
+	let codes: string[] = [];
 	try {
 		const profile = await getUserProfile(uid);
-		registryCodes = profile?.polls ?? [];
+		codes = profile?.polls ?? [];
 	} catch {
-		// Registry unreadable: fall back to this device's known polls only.
+		// Registry unreadable (offline): the name is still applied to the
+		// currently open poll by usePoll's rename effect.
 	}
-	const codes = [...new Set([...localCodes, ...registryCodes])];
 	await Promise.allSettled([
 		...codes.map((code) => renameParticipant(code, uid, name)),
 		setDoc(userRef(uid), { name }, { merge: true }),
