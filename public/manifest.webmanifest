@@ -1,6 +1,6 @@
 {
-	"name": "Movie Night Polls",
-	"short_name": "Movie Polls",
+	"name": "Movie Poll",
+	"short_name": "Movie Poll",
 	"description": "Ranked choice voting for movie night. Cloud-synced, no account needed.",
 	"start_url": ".",
 	"scope": ".",
