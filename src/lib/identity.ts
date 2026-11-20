@@ -15,6 +15,14 @@
 const PREFIX = 'movie-poll.';
 
 /**
+ * Set once the legacy import has run. Without it, every page load would keep
+ * importing keys the other same-origin app writes later, and would resurrect
+ * namespaced data the user deliberately removed (its legacy copy still
+ * exists, so an absent namespaced key looks like one awaiting import).
+ */
+const MIGRATION_DONE = `${PREFIX}legacyMigrated`;
+
+/**
  * Keys this app used before repo-name namespacing. `mnp.` was shared with
  * the movie-night-polls app on the same origin; bare `pollSettings.` keys
  * were unprefixed. Values are COPIED, never deleted: the other app may still
@@ -33,6 +41,7 @@ function legacyTarget(oldKey: string): string | null {
 
 function migrateLegacyKeys(): void {
 	if (typeof localStorage === 'undefined') return;
+	if (localStorage.getItem(MIGRATION_DONE) !== null) return;
 	// Collect first: writing during key() iteration mutates the index order.
 	const moves: Array<[string, string]> = [];
 	for (let i = 0; i < localStorage.length; i++) {
@@ -47,6 +56,7 @@ function migrateLegacyKeys(): void {
 		const value = localStorage.getItem(oldKey);
 		if (value !== null) localStorage.setItem(newKey, value);
 	}
+	localStorage.setItem(MIGRATION_DONE, '1');
 }
 
 migrateLegacyKeys();
