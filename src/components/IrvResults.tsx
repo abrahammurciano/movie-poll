@@ -26,20 +26,23 @@ function breakdown(c: RoundCount): string {
  * optional round-by-round view. Totals come from different rounds, so they
  * are deliberately not presented as one tally.
  */
-export function IrvResults({ movies, rounds }: { movies: Movie[]; rounds: IrvRound[] }) {
+export function IrvResults({ movies, rounds, hasWinner }: { movies: Movie[]; rounds: IrvRound[]; hasWinner: boolean }) {
 	if (rounds.length === 0) return null;
 	const byId = new Map(movies.map((m) => [m.id, m]));
 	const last = rounds[rounds.length - 1];
 
+	// With no winner, the last round's "eliminated" are the movies that stayed
+	// tied to the end, not real eliminations: show them as tied, not out.
+	const tiedIds = hasWinner ? [] : last.eliminated;
 	const rows: Row[] = [];
-	for (const c of [...last.counts].filter((c) => !last.eliminated.includes(c.id)).sort((a, b) => votesOf(b) - votesOf(a))) {
+	for (const c of [...last.counts].filter((c) => !last.eliminated.includes(c.id) || tiedIds.includes(c.id)).sort((a, b) => votesOf(b) - votesOf(a))) {
 		const movie = byId.get(c.id);
 		if (movie) rows.push({ movie, count: c, outRound: null });
 	}
 	// Latest eliminations finish highest; within a round, more votes first
 	for (const r of [...rounds].reverse()) {
 		const out = r.counts
-			.filter((c) => r.eliminated.includes(c.id))
+			.filter((c) => r.eliminated.includes(c.id) && !(r === last && tiedIds.includes(c.id)))
 			.sort((a, b) => votesOf(b) - votesOf(a));
 		for (const c of out) {
 			const movie = byId.get(c.id);
@@ -50,10 +53,12 @@ export function IrvResults({ movies, rounds }: { movies: Movie[]; rounds: IrvRou
 	const totalBallots = rounds[0].counts.reduce((n, c) => n + votesOf(c), 0) + rounds[0].exhausted;
 	const max = Math.max(1, ...rows.map((r) => votesOf(r.count)));
 	const gone = rounds.reduce((n, r) => n + r.eliminated.length, 0);
-	const summary =
-		rounds.length === 1
+	const goneReal = hasWinner ? gone : gone - tiedIds.length;
+	const summary = !hasWinner
+		? `No majority: the remaining movies were tied all the way down, so nobody won.`
+		: rounds.length === 1
 			? `Won outright in round 1: more than half of the ${plural(totalBallots, 'ballot')}.`
-			: `${plural(gone, 'movie')} eliminated over ${plural(rounds.length - 1, 'round')}, then the final round decided it.`;
+			: `${plural(goneReal, 'movie')} eliminated over ${plural(rounds.length - 1, 'round')}, then the final round decided it.`;
 
 	return (
 		<div className="w-full space-y-3 text-left">
@@ -67,7 +72,7 @@ export function IrvResults({ movies, rounds }: { movies: Movie[]; rounds: IrvRou
 			<ol className="space-y-3">
 				{rows.map((row, i) => {
 					const v = votesOf(row.count);
-					const dim = row.outRound !== null;
+					const dim = row.outRound !== null || !hasWinner;
 					return (
 						<li key={row.movie.id} className={dim ? 'opacity-70' : ''}>
 							<div className="flex items-baseline justify-between gap-2 min-w-0">
@@ -88,7 +93,11 @@ export function IrvResults({ movies, rounds }: { movies: Movie[]; rounds: IrvRou
 							</div>
 							<p className="mt-1 flex items-center gap-1 text-[11px] text-muted-foreground">
 								{row.outRound !== null && <X className="h-3 w-3" aria-hidden="true" />}
-								{row.outRound !== null ? `Out in round ${row.outRound}` : `Final round (${rounds.length})`}
+								{row.outRound !== null
+									? `Out in round ${row.outRound}`
+									: hasWinner
+										? `Final round (${rounds.length})`
+										: `Still tied after round ${rounds.length}`}
 								{' · '}
 								{breakdown(row.count)}
 							</p>
