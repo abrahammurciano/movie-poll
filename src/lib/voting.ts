@@ -113,16 +113,15 @@ export function runInstantRunoff(
 			const minWeight = Math.min(...Array.from(weights.values()));
 			out = lowest.filter((id) => weights.get(id) === minWeight);
 		}
-		// If everyone left is tied all the way down, nobody can be eliminated:
-		// they are co-winners rather than "no winner".
-		if (out.length === remaining.size) return finish(Array.from(remaining), round);
-
 		for (const id of out) {
 			eliminatedVotes.set(id, votes(counts.get(id)!));
 			remaining.delete(id);
 		}
 		round.eliminated = out;
 	}
+
+	// Everyone left was eliminated together (tied all the way down, as before this
+	// change): no single winner. The rounds still record what happened.
 
 	return { winners: [], finalTally: new Map(), eliminatedVotes, rounds };
 }
@@ -356,4 +355,4 @@ function runRankedPairs(ballots: Record<string, string[]>, movies: Movie[]): Vot
 		finalTally.set(movie.id, { primary: locked.get(movie.id)?.size ?? 0, transferred: 0 });
 	}
 	return { winners, finalTally, eliminatedVotes: new Map() };
-}
+									 }
