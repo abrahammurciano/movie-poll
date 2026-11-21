@@ -1,13 +1,29 @@
 import type { Movie } from '@/types';
 
+export const SCORE_UNITS: Record<string, (n: number) => string> = {
+	borda: (n) => `${n} point${n === 1 ? '' : 's'}`,
+	schulze: (n) => `beats ${n}`,
+	'ranked-pairs': (n) => `${n} locked win${n === 1 ? '' : 's'}`,
+};
+
+export const SCORE_NOTES: Record<string, string> = {
+	borda: 'Every rank on every ballot earns points (more for higher picks); the most points wins.',
+	schulze: 'Each movie is compared head-to-head with every other. The number is how many movies it beats, directly or through a chain of wins.',
+	'ranked-pairs': 'Head-to-head wins are locked in from the biggest margin down, skipping any that would contradict stronger ones. The number is how many wins a movie has locked in.',
+};
+
 interface VoteChartProps {
 	movies: Movie[];
 	tally: Map<string, { primary: number; transferred: number }>;
 	eliminatedVotes: Map<string, number>;
 	label?: string;
+	/** How to write a score, e.g. n => `${n} points`. Defaults to votes. */
+	unit?: (n: number) => string;
+	/** One plain sentence under the chart explaining what the numbers mean. */
+	note?: string;
 }
 
-export function VoteChart({ movies, tally, eliminatedVotes, label = 'Final round votes' }: VoteChartProps) {
+export function VoteChart({ movies, tally, eliminatedVotes, label = 'Final round votes', unit, note }: VoteChartProps) {
 	const maxVotes = Math.max(
 		...Array.from(tally.values()).map((t) => t.primary + t.transferred),
 		...Array.from(eliminatedVotes.values()),
@@ -43,7 +59,7 @@ export function VoteChart({ movies, tally, eliminatedVotes, label = 'Final round
 							<div className="flex items-baseline justify-between gap-2 min-w-0">
 								<span className="text-sm font-medium truncate">{movie.title}</span>
 								<span className="text-xs font-semibold flex-shrink-0" style={{ color: 'oklch(0.8 0.12 160)' }}>
-									{total} vote{total !== 1 ? 's' : ''}
+									{unit ? unit(total) : `${total} vote${total !== 1 ? 's' : ''}`}
 								</span>
 							</div>
 							<div className="flex h-2 rounded-full overflow-hidden bg-white/5">
@@ -78,6 +94,7 @@ export function VoteChart({ movies, tally, eliminatedVotes, label = 'Final round
 					);
 				})}
 			</div>
+			{note && <p className="text-[11px] leading-snug text-muted-foreground">{note}</p>}
 		</div>
 	);
-}
+								  }
