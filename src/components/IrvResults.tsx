@@ -32,7 +32,7 @@ export function IrvResults({ movies, rounds }: { movies: Movie[]; rounds: IrvRou
 	const last = rounds[rounds.length - 1];
 
 	const rows: Row[] = [];
-	for (const c of [...last.counts].sort((a, b) => votesOf(b) - votesOf(a))) {
+	for (const c of [...last.counts].filter((c) => !last.eliminated.includes(c.id)).sort((a, b) => votesOf(b) - votesOf(a))) {
 		const movie = byId.get(c.id);
 		if (movie) rows.push({ movie, count: c, outRound: null });
 	}
@@ -143,4 +143,4 @@ export function IrvResults({ movies, rounds }: { movies: Movie[]; rounds: IrvRou
 			</details>
 		</div>
 	);
-                                               }
+}
