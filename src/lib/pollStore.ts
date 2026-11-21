@@ -152,6 +152,19 @@ export async function unregisterPoll(uid: string, code: string): Promise<void> {
 export interface UserProfile {
 	name?: string;
 	polls: string[];
+	/** Codes the account has hidden from its own "Your polls" list. */
+	archived: string[];
+}
+
+/** Hide (or restore) a poll in the account's own "Your polls" list. Only the
+ * account's registry changes; the poll itself and other participants are
+ * untouched. */
+export async function setPollArchived(uid: string, code: string, archived: boolean): Promise<void> {
+	await setDoc(
+		userRef(uid),
+		{ archived: { [code]: archived ? true : deleteField() } },
+		{ merge: true },
+	);
 }
 
 /** Read the account-level registry doc (users/{uid}). null when absent. */
@@ -162,6 +175,7 @@ export async function getUserProfile(uid: string): Promise<UserProfile | null> {
 	return {
 		name: typeof data.name === 'string' ? data.name : undefined,
 		polls: Object.keys(data.polls ?? {}),
+		archived: Object.keys(data.archived ?? {}),
 	};
 }
 

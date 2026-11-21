@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import type { CreatePollSettings } from '@/lib/pollSettings';
 import { VOTING_METHODS } from '@/lib/voting';
@@ -22,24 +22,50 @@ const DEADLINE_OPTIONS: Array<{ minutes: number; label: string }> = [
 
 export function SettingsModal({ isOpen, onClose, settings, onChange }: Props) {
 	const [methodHelp, setMethodHelp] = useState<VotingMethod | null>(null);
+	const [methodsOpen, setMethodsOpen] = useState(false);
+	// The number field keeps its own text so it can be empty while typing;
+	// a valid number is committed immediately, and blur restores a valid one.
+	const [nominationsText, setNominationsText] = useState(String(settings.maxNominationsPerUser));
+	// Only close on a click that both started and ended on the backdrop, so a
+	// native picker (select) dismissing over it can't close the dialog.
+	const pressStartedOnBackdrop = useRef(false);
+
+	useEffect(() => {
+		if (isOpen) {
+			setNominationsText(String(settings.maxNominationsPerUser));
+			setMethodsOpen(false);
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [isOpen]);
 
 	if (!isOpen) return null;
 
 	function handleMaxNominations(value: string) {
-		const parsed = parseInt(value);
+		const digits = value.replace(/\D/g, '').slice(0, 2);
+		setNominationsText(digits);
+		const parsed = parseInt(digits, 10);
 		if (isNaN(parsed)) return;
-		onChange({ ...settings, maxNominationsPerUser: Math.min(20, Math.max(1, parsed)) });
+		const clamped = Math.min(20, Math.max(1, parsed));
+		onChange({ ...settings, maxNominationsPerUser: clamped });
+	}
+
+	function commitMaxNominations() {
+		setNominationsText(String(settings.maxNominationsPerUser));
 	}
 
 	return (
 		<div
-			className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5 py-14 pointer-events-auto"
-			onClick={onClose}
+			className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 px-5 py-3 pointer-events-auto"
+			onPointerDown={(e) => { pressStartedOnBackdrop.current = e.target === e.currentTarget; }}
+			onClick={(e) => {
+				if (e.target === e.currentTarget && pressStartedOnBackdrop.current) onClose();
+				pressStartedOnBackdrop.current = false;
+			}}
 			role="dialog"
 			aria-modal="true"
 		>
 			<div
-				className="glass-card w-full max-w-sm p-6 shadow-2xl pointer-events-auto"
+				className="glass-card w-full max-w-sm max-h-[95dvh] overflow-y-auto overscroll-contain p-6 shadow-2xl pointer-events-auto"
 				onClick={(e) => e.stopPropagation()}
 			>
 				<h2 className="mb-6 text-2xl font-bold tracking-tight">Poll Settings</h2>
@@ -75,12 +101,13 @@ export function SettingsModal({ isOpen, onClose, settings, onChange }: Props) {
 						</label>
 						<input
 							id="maxNominations"
-							type="number"
-							min="1"
-							max="20"
+							type="text"
+							inputMode="numeric"
+							pattern="[0-9]*"
 							className="cinema-input"
-							value={settings.maxNominationsPerUser}
+							value={nominationsText}
 							onChange={(e) => handleMaxNominations(e.target.value)}
+							onBlur={commitMaxNominations}
 						/>
 						<p className="text-[11px] text-muted-foreground">
 							How many movies can each person nominate?
@@ -116,7 +143,9 @@ export function SettingsModal({ isOpen, onClose, settings, onChange }: Props) {
 							Voting method
 						</p>
 						<ul className="space-y-2">
-							{(Object.keys(VOTING_METHODS) as VotingMethod[]).map((method) => {
+							{(Object.keys(VOTING_METHODS) as VotingMethod[])
+								.filter((method) => methodsOpen || method === settings.votingMethod)
+								.map((method) => {
 								const meta = VOTING_METHODS[method];
 								const selected = settings.votingMethod === method;
 								return (
@@ -129,8 +158,8 @@ export function SettingsModal({ isOpen, onClose, settings, onChange }: Props) {
 												background: selected ? 'oklch(0.8 0.12 160 / 0.12)' : 'oklch(1 0 0 / 0.04)',
 												border: selected ? '1px solid oklch(0.8 0.12 160 / 0.45)' : '1px solid oklch(1 0 0 / 0.08)',
 											}}
-											onClick={() => onChange({ ...settings, votingMethod: method })}
-											onKeyDown={(e) => e.key === 'Enter' && onChange({ ...settings, votingMethod: method })}
+											onClick={() => { onChange({ ...settings, votingMethod: method }); setMethodsOpen(false); }}
+											onKeyDown={(e) => { if (e.key === 'Enter') { onChange({ ...settings, votingMethod: method }); setMethodsOpen(false); } }}
 										>
 											<span
 												className="flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full"
@@ -166,6 +195,14 @@ export function SettingsModal({ isOpen, onClose, settings, onChange }: Props) {
 								);
 							})}
 						</ul>
+						<button
+							type="button"
+							className="text-xs text-muted-foreground underline-offset-2 transition-colors hover:text-foreground hover:underline cursor-pointer"
+							aria-expanded={methodsOpen}
+							onClick={() => setMethodsOpen((v) => !v)}
+						>
+							{methodsOpen ? 'Show less' : 'Change method'}
+						</button>
 					</div>
 
 					<p className="text-[11px] text-muted-foreground/70">

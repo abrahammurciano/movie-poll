@@ -106,6 +106,7 @@ function App() {
 				displayName={session.displayName}
 				autoShare={session.autoShare}
 				isHost={session.isHost}
+				createSettings={session.createSettings}
 				onLeave={() => {
 					const session = new URLSearchParams(window.location.search).get('session');
 					const qs = session && session !== '0' ? `?session=${session}` : '';

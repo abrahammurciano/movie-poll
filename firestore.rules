@@ -177,13 +177,18 @@ service cloud.firestore {
       allow list: if false;
       allow create, update: if authed()
         && request.auth.uid == uid
-        && request.resource.data.keys().hasOnly(['name', 'polls'])
+        && request.resource.data.keys().hasOnly(['name', 'polls', 'archived'])
         && (!request.resource.data.keys().hasAny(['name'])
             || validName(request.resource.data.name))
         && (!request.resource.data.keys().hasAny(['polls'])
             || (request.resource.data.polls is map
                 && request.resource.data.polls.size() <= 500
-                && request.resource.data.polls.values().hasOnly([true])));
+                && request.resource.data.polls.values().hasOnly([true])))
+        // Codes the owner has hidden from their own "Your polls" list.
+        && (!request.resource.data.keys().hasAny(['archived'])
+            || (request.resource.data.archived is map
+                && request.resource.data.archived.size() <= 500
+                && request.resource.data.archived.values().hasOnly([true])));
       allow delete: if false;
     }
 
