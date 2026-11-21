@@ -40,6 +40,8 @@ export function usePoll(
 		nominations: {},
 		ballots: {},
 		ready: false,
+		pollConfirmed: false,
+		error: null,
 	});
 
 	useEffect(() => {
@@ -173,5 +175,7 @@ export function usePoll(
 
 	const loading = uid === null || !docs.ready;
 
-	return { state, selfId, loading, nominateMovie, submitBallot, advancePhase, revokePeer };
+	const loadError = docs.error;
+
+	return { state, selfId, loading, loadError, nominateMovie, submitBallot, advancePhase, revokePeer };
 }
