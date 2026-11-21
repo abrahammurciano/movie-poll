@@ -99,9 +99,10 @@ describe('runInstantRunoff rounds', () => {
 		}
 	});
 
-	it('reports co-winners when the last movies are tied all the way down', () => {
+	it('keeps the existing no-winner outcome when the last movies are tied all the way down', () => {
 		const result = runInstantRunoff({ p1: ['a'], p2: ['b'] }, movies.slice(0, 2));
-		expect(result.winners.map((m) => m.id).sort()).toEqual(['a', 'b']);
+		expect(result.winners).toEqual([]);
+		expect(result.rounds![0].eliminated.sort()).toEqual(['a', 'b']);
 	});
 
 	it('counts ballots with no remaining choice as exhausted, not as votes', () => {
@@ -109,10 +110,10 @@ describe('runInstantRunoff rounds', () => {
 			{ p1: ['a'], p2: ['a'], p3: ['b'], p4: ['c'], p5: ['c'] },
 			movies,
 		);
-		// b is eliminated; p3 has no further choice. a=2, c=2 of 5 valid: tie, co-winners.
+		// b is eliminated; p3 has no further choice. a=2, c=2: tied to the end (unchanged: no winner).
 		expect(result.rounds![0].eliminated).toEqual(['b']);
 		expect(result.rounds![1].exhausted).toBe(1);
-		expect(result.winners.map((m) => m.id).sort()).toEqual(['a', 'c']);
+		expect(result.winners).toEqual([]);
 	});
 });
 
