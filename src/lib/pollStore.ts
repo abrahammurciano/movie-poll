@@ -38,6 +38,8 @@ export interface PollDocs {
 	participants: Participants;
 	nominations: NominationsByUser;
 	ballots: Ballots;
+	/** false until every subscription has delivered its first snapshot */
+	ready: boolean;
 }
 
 const polls = collection(db, 'polls');
@@ -69,33 +71,41 @@ function toPollDoc(data: DocumentData): PollDoc {
 
 /** Subscribe to everything that defines a poll. Fires on every change. */
 export function subscribePoll(code: string, cb: (docs: PollDocs) => void): () => void {
-	const docs: PollDocs = { poll: undefined, participants: {}, nominations: {}, ballots: {} };
-	const emit = () => cb({ ...docs });
-	const onError = (what: string) => (error: unknown) =>
+	const docs: PollDocs = { poll: undefined, participants: {}, nominations: {}, ballots: {}, ready: false };
+	const seen = new Set<string>();
+	const emit = (source: string) => {
+		seen.add(source);
+		docs.ready = seen.size === 4;
+		cb({ ...docs });
+	};
+	// A failed subscription still counts as settled so the page never spins forever.
+	const onError = (what: string) => (error: unknown) => {
 		console.error(`poll ${code}: ${what} subscription failed`, error);
+		emit(what);
+	};
 
 	const unsubs = [
 		onSnapshot(pollRef(code), (snap) => {
 			docs.poll = snap.exists() ? toPollDoc(snap.data()) : null;
-			emit();
+			emit('poll');
 		}, onError('poll')),
 		onSnapshot(collection(polls, code, 'participants'), (snap) => {
 			docs.participants = Object.fromEntries(
 				snap.docs.map((d) => [d.id, { name: d.data().name as string }]),
 			);
-			emit();
+			emit('participants');
 		}, onError('participants')),
 		onSnapshot(collection(polls, code, 'nominations'), (snap) => {
 			docs.nominations = Object.fromEntries(
 				snap.docs.map((d) => [d.id, (d.data().movies ?? []) as Array<Omit<Movie, 'nominatedBy'>>]),
 			);
-			emit();
+			emit('nominations');
 		}, onError('nominations')),
 		onSnapshot(collection(polls, code, 'ballots'), (snap) => {
 			docs.ballots = Object.fromEntries(
 				snap.docs.map((d) => [d.id, (d.data().ranking ?? []) as string[]]),
 			);
-			emit();
+			emit('ballots');
 		}, onError('ballots')),
 	];
 	return () => unsubs.forEach((u) => u());
@@ -243,4 +253,4 @@ export async function revokeParticipant(code: string, uid: string): Promise<void
 	batch.delete(nominationsRef(code, uid));
 	batch.delete(ballotRef(code, uid));
 	await batch.commit();
-}
+					 }
