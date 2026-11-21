@@ -6,7 +6,7 @@ import { posterUrl, getGenreNames, getImdbId } from '@/lib/tmdb';
 import { VOTING_METHODS } from '@/lib/voting';
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ChevronUp, ChevronDown, Users } from 'lucide-react';
+import { ChevronUp, ChevronDown, Loader2, Users } from 'lucide-react';
 import type { Movie, PeerId } from '@/types';
 import type { CreatePollSettings } from '@/lib/pollSettings';
 import type { Phase } from '@/types';
@@ -679,12 +679,43 @@ function PeopleSheet({ peers, hostId, selfId, isHost, phase, movies, ballots, co
 	);
 }
 
+/** Shown until the poll has loaded; offers a reload if the server stays unreachable. */
+function PollLoading({ failed = false }: { failed?: boolean }) {
+	const [slow, setSlow] = useState(false);
+	useEffect(() => {
+		const t = setTimeout(() => setSlow(true), 12_000);
+		return () => clearTimeout(t);
+	}, []);
+	const stuck = slow || failed;
+	return (
+		<div
+			className="mx-auto flex min-h-svh w-full max-w-lg flex-col items-center justify-center gap-3 px-6 text-center"
+			role="status"
+			aria-live="polite"
+		>
+			{!failed && <Loader2 className="h-6 w-6 animate-spin opacity-70" aria-hidden="true" />}
+			<p className="text-sm opacity-70">
+				{failed
+					? "Couldn't load this poll. Check your connection and reload."
+					: slow
+						? 'Still trying to reach the server. Check your connection.'
+						: 'Loading poll…'}
+			</p>
+			{stuck && (
+				<Button className="rounded-xl" onClick={() => window.location.reload()}>
+					Reload
+				</Button>
+			)}
+		</div>
+	);
+}
+
 export function PollPage({ pollCode, displayName, autoShare = false, isHost = false, createSettings, onLeave: _onLeave }: Props) {
 	const [localDisplayName, setLocalDisplayName] = useState(displayName);
 	// Follow an externally adopted name (e.g. the account-level registry
 	// resolving a canonical name set on another device).
 	useEffect(() => setLocalDisplayName(displayName), [displayName]);
-	const { state, selfId, nominateMovie, submitBallot, advancePhase, revokePeer } = usePoll(
+	const { state, selfId, loading, loadError, nominateMovie, submitBallot, advancePhase, revokePeer } = usePoll(
 		pollCode,
 		localDisplayName,
 		isHost,
@@ -969,6 +1000,12 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 
 	const canRank = state.movies.length >= 1 && !hasVoted;
 	const unranked = state.movies.filter((m) => !ranking.includes(m.id));
+
+	// Hold the page until Firestore has delivered the poll, so a reload never
+	// flashes an empty poll ("You're the only one here", no movies).
+	if (loading || loadError) {
+		return <PollLoading failed={!!loadError} />;
+	}
 
 	return (
 		<div className="mx-auto flex min-h-svh w-full max-w-lg flex-col">
@@ -1416,4 +1453,4 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 
 		</div>
 	);
-				}
+						}

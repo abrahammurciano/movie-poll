@@ -38,6 +38,12 @@ export interface PollDocs {
 	participants: Participants;
 	nominations: NominationsByUser;
 	ballots: Ballots;
+	/** false until every subscription has delivered its first snapshot */
+	ready: boolean;
+	/** true once the poll document itself came from the server (not the local cache) */
+	pollConfirmed: boolean;
+	/** set when any subscription failed; the data is then incomplete and must not be shown as the poll */
+	error: string | null;
 }
 
 const polls = collection(db, 'polls');
@@ -69,33 +75,46 @@ function toPollDoc(data: DocumentData): PollDoc {
 
 /** Subscribe to everything that defines a poll. Fires on every change. */
 export function subscribePoll(code: string, cb: (docs: PollDocs) => void): () => void {
-	const docs: PollDocs = { poll: undefined, participants: {}, nominations: {}, ballots: {} };
-	const emit = () => cb({ ...docs });
-	const onError = (what: string) => (error: unknown) =>
+	const docs: PollDocs = { poll: undefined, participants: {}, nominations: {}, ballots: {}, ready: false, pollConfirmed: false, error: null };
+	const seen = new Set<string>();
+	// A snapshot served from the local cache (e.g. while offline, where it is
+	// empty) is not the poll: only a server-confirmed first snapshot, or a
+	// failed subscription, settles a source. Later updates are always emitted.
+	const emit = (source: string, settled = true) => {
+		if (settled) seen.add(source);
+		docs.ready = seen.size === 4;
+		cb({ ...docs });
+	};
+	// A failed subscription still counts as settled so the page never spins forever.
+	const onError = (what: string) => (error: unknown) => {
 		console.error(`poll ${code}: ${what} subscription failed`, error);
+		docs.error = `${what} subscription failed`;
+		emit(what);
+	};
 
 	const unsubs = [
 		onSnapshot(pollRef(code), (snap) => {
 			docs.poll = snap.exists() ? toPollDoc(snap.data()) : null;
-			emit();
+			if (!snap.metadata.fromCache) docs.pollConfirmed = true;
+			emit('poll', !snap.metadata.fromCache);
 		}, onError('poll')),
 		onSnapshot(collection(polls, code, 'participants'), (snap) => {
 			docs.participants = Object.fromEntries(
 				snap.docs.map((d) => [d.id, { name: d.data().name as string }]),
 			);
-			emit();
+			emit('participants', !snap.metadata.fromCache);
 		}, onError('participants')),
 		onSnapshot(collection(polls, code, 'nominations'), (snap) => {
 			docs.nominations = Object.fromEntries(
 				snap.docs.map((d) => [d.id, (d.data().movies ?? []) as Array<Omit<Movie, 'nominatedBy'>>]),
 			);
-			emit();
+			emit('nominations', !snap.metadata.fromCache);
 		}, onError('nominations')),
 		onSnapshot(collection(polls, code, 'ballots'), (snap) => {
 			docs.ballots = Object.fromEntries(
 				snap.docs.map((d) => [d.id, (d.data().ranking ?? []) as string[]]),
 			);
-			emit();
+			emit('ballots', !snap.metadata.fromCache);
 		}, onError('ballots')),
 	];
 	return () => unsubs.forEach((u) => u());

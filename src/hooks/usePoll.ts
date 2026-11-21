@@ -39,6 +39,9 @@ export function usePoll(
 		participants: {},
 		nominations: {},
 		ballots: {},
+		ready: false,
+		pollConfirmed: false,
+		error: null,
 	});
 
 	useEffect(() => {
@@ -170,5 +173,9 @@ export function usePoll(
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [amHost, state.phase, state.createdAt, state.settings]);
 
-	return { state, selfId, nominateMovie, submitBallot, advancePhase, revokePeer };
+	const loading = uid === null || !docs.ready;
+
+	const loadError = docs.error;
+
+	return { state, selfId, loading, loadError, nominateMovie, submitBallot, advancePhase, revokePeer };
 }
