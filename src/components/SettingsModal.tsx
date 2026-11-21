@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { Check, ChevronDown, ChevronUp, CircleHelp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import type { CreatePollSettings } from '@/lib/pollSettings';
 import { VOTING_METHODS } from '@/lib/voting';
@@ -188,7 +189,7 @@ export function SettingsModal({ isOpen, onClose, settings, onChange }: Props) {
 												aria-label={`How ${meta.name} works`}
 												onClick={(e) => { e.stopPropagation(); setMethodHelp(method); }}
 											>
-												?
+												<CircleHelp className="h-4 w-4" aria-hidden="true" />
 											</button>
 										</div>
 									</li>
@@ -201,7 +202,14 @@ export function SettingsModal({ isOpen, onClose, settings, onChange }: Props) {
 							aria-expanded={methodsOpen}
 							onClick={() => setMethodsOpen((v) => !v)}
 						>
-							{methodsOpen ? 'Show less' : 'Change method'}
+							<span className="inline-flex items-center gap-1">
+								{methodsOpen ? (
+									<ChevronUp className="h-3.5 w-3.5" aria-hidden="true" />
+								) : (
+									<ChevronDown className="h-3.5 w-3.5" aria-hidden="true" />
+								)}
+								{methodsOpen ? 'Show less' : 'Change method'}
+							</span>
 						</button>
 					</div>
 
@@ -214,6 +222,7 @@ export function SettingsModal({ isOpen, onClose, settings, onChange }: Props) {
 						style={{ height: '2.625rem' }}
 						onClick={onClose}
 					>
+						<Check className="h-4 w-4" aria-hidden="true" />
 						Done
 					</Button>
 				</div>
