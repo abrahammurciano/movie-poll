@@ -6,7 +6,7 @@ import { posterUrl, getGenreNames, getImdbId } from '@/lib/tmdb';
 import { VOTING_METHODS } from '@/lib/voting';
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ChevronUp, ChevronDown, Users } from 'lucide-react';
+import { ChevronUp, ChevronDown, Loader2, Users } from 'lucide-react';
 import type { Movie, PeerId } from '@/types';
 import type { CreatePollSettings } from '@/lib/pollSettings';
 import type { Phase } from '@/types';
@@ -684,7 +684,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 	// Follow an externally adopted name (e.g. the account-level registry
 	// resolving a canonical name set on another device).
 	useEffect(() => setLocalDisplayName(displayName), [displayName]);
-	const { state, selfId, nominateMovie, submitBallot, advancePhase, revokePeer } = usePoll(
+	const { state, selfId, loading, nominateMovie, submitBallot, advancePhase, revokePeer } = usePoll(
 		pollCode,
 		localDisplayName,
 		isHost,
@@ -969,6 +969,21 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 
 	const canRank = state.movies.length >= 1 && !hasVoted;
 	const unranked = state.movies.filter((m) => !ranking.includes(m.id));
+
+	// Hold the page until Firestore has delivered the poll, so a reload never
+	// flashes an empty poll ("You're the only one here", no movies).
+	if (loading) {
+		return (
+			<div
+				className="mx-auto flex min-h-svh w-full max-w-lg flex-col items-center justify-center gap-3"
+				role="status"
+				aria-live="polite"
+			>
+				<Loader2 className="h-6 w-6 animate-spin opacity-70" aria-hidden="true" />
+				<p className="text-sm opacity-70">Loading poll…</p>
+			</div>
+		);
+	}
 
 	return (
 		<div className="mx-auto flex min-h-svh w-full max-w-lg flex-col">
