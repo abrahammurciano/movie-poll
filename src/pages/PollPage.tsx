@@ -679,6 +679,32 @@ function PeopleSheet({ peers, hostId, selfId, isHost, phase, movies, ballots, co
 	);
 }
 
+/** Shown until the poll has loaded; offers a reload if the server stays unreachable. */
+function PollLoading() {
+	const [slow, setSlow] = useState(false);
+	useEffect(() => {
+		const t = setTimeout(() => setSlow(true), 12_000);
+		return () => clearTimeout(t);
+	}, []);
+	return (
+		<div
+			className="mx-auto flex min-h-svh w-full max-w-lg flex-col items-center justify-center gap-3 px-6 text-center"
+			role="status"
+			aria-live="polite"
+		>
+			<Loader2 className="h-6 w-6 animate-spin opacity-70" aria-hidden="true" />
+			<p className="text-sm opacity-70">
+				{slow ? "Still trying to reach the server. Check your connection." : 'Loading poll…'}
+			</p>
+			{slow && (
+				<Button className="rounded-xl" onClick={() => window.location.reload()}>
+					Reload
+				</Button>
+			)}
+		</div>
+	);
+}
+
 export function PollPage({ pollCode, displayName, autoShare = false, isHost = false, createSettings, onLeave: _onLeave }: Props) {
 	const [localDisplayName, setLocalDisplayName] = useState(displayName);
 	// Follow an externally adopted name (e.g. the account-level registry
@@ -973,16 +999,7 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 	// Hold the page until Firestore has delivered the poll, so a reload never
 	// flashes an empty poll ("You're the only one here", no movies).
 	if (loading) {
-		return (
-			<div
-				className="mx-auto flex min-h-svh w-full max-w-lg flex-col items-center justify-center gap-3"
-				role="status"
-				aria-live="polite"
-			>
-				<Loader2 className="h-6 w-6 animate-spin opacity-70" aria-hidden="true" />
-				<p className="text-sm opacity-70">Loading poll…</p>
-			</div>
-		);
+		return <PollLoading />;
 	}
 
 	return (
@@ -1431,4 +1448,4 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 
 		</div>
 	);
-				}
+										  }
