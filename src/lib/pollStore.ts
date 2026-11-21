@@ -73,8 +73,11 @@ function toPollDoc(data: DocumentData): PollDoc {
 export function subscribePoll(code: string, cb: (docs: PollDocs) => void): () => void {
 	const docs: PollDocs = { poll: undefined, participants: {}, nominations: {}, ballots: {}, ready: false };
 	const seen = new Set<string>();
-	const emit = (source: string) => {
-		seen.add(source);
+	// A snapshot served from the local cache (e.g. while offline, where it is
+	// empty) is not the poll: only a server-confirmed first snapshot, or a
+	// failed subscription, settles a source. Later updates are always emitted.
+	const emit = (source: string, settled = true) => {
+		if (settled) seen.add(source);
 		docs.ready = seen.size === 4;
 		cb({ ...docs });
 	};
@@ -87,25 +90,25 @@ export function subscribePoll(code: string, cb: (docs: PollDocs) => void): () =>
 	const unsubs = [
 		onSnapshot(pollRef(code), (snap) => {
 			docs.poll = snap.exists() ? toPollDoc(snap.data()) : null;
-			emit('poll');
+			emit('poll', !snap.metadata.fromCache);
 		}, onError('poll')),
 		onSnapshot(collection(polls, code, 'participants'), (snap) => {
 			docs.participants = Object.fromEntries(
 				snap.docs.map((d) => [d.id, { name: d.data().name as string }]),
 			);
-			emit('participants');
+			emit('participants', !snap.metadata.fromCache);
 		}, onError('participants')),
 		onSnapshot(collection(polls, code, 'nominations'), (snap) => {
 			docs.nominations = Object.fromEntries(
 				snap.docs.map((d) => [d.id, (d.data().movies ?? []) as Array<Omit<Movie, 'nominatedBy'>>]),
 			);
-			emit('nominations');
+			emit('nominations', !snap.metadata.fromCache);
 		}, onError('nominations')),
 		onSnapshot(collection(polls, code, 'ballots'), (snap) => {
 			docs.ballots = Object.fromEntries(
 				snap.docs.map((d) => [d.id, (d.data().ranking ?? []) as string[]]),
 			);
-			emit('ballots');
+			emit('ballots', !snap.metadata.fromCache);
 		}, onError('ballots')),
 	];
 	return () => unsubs.forEach((u) => u());
@@ -253,4 +256,4 @@ export async function revokeParticipant(code: string, uid: string): Promise<void
 	batch.delete(nominationsRef(code, uid));
 	batch.delete(ballotRef(code, uid));
 	await batch.commit();
-					 }
+}
