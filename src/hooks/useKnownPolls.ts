@@ -56,6 +56,9 @@ export function useKnownPolls(): {
 					if (!latest || latest.poll === undefined) return;
 					const poll = latest.poll;
 					if (poll === null) {
+						// An offline/cache-only snapshot or a failed subscription also
+						// reads as "no poll": only a server-confirmed miss is real.
+						if (!latest.pollConfirmed || latest.error) return;
 						// Poll is gone (never created or deleted): stop tracking it.
 						if (selfIdRef.current) {
 							unregisterPoll(selfIdRef.current, code).catch(() => {});
