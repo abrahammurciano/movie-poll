@@ -1,3 +1,4 @@
+import { Archive, ArchiveRestore, ChevronDown, ChevronUp, Plus, SlidersHorizontal, X } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { SettingsModal } from '@/components/SettingsModal';
@@ -153,6 +154,7 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 						style={{ height: '2.625rem' }}
 						onClick={handleCreate}
 					>
+						<Plus className="h-4 w-4" aria-hidden="true" />
 						Create poll
 					</Button>
 
@@ -168,6 +170,7 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 									title="You've customized the default settings"
 								/>
 							)}
+							<SlidersHorizontal className="h-3.5 w-3.5" aria-hidden="true" />
 							Customize poll
 						</button>
 					</div>
@@ -247,12 +250,12 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 									</span>
 								</button>
 								<button
-									className="flex-shrink-0 rounded-lg px-1.5 py-1 text-[11px] opacity-50 transition-opacity hover:opacity-90"
+									className="flex-shrink-0 rounded-lg p-1.5 opacity-50 transition-opacity hover:opacity-90"
 									onClick={() => setArchived(poll.code, true)}
 									title="Archive poll"
 									aria-label={`Archive poll ${poll.code}`}
 								>
-									Archive
+									<Archive className="h-4 w-4" aria-hidden="true" />
 								</button>
 								{poll.phase === 'results' && (
 									<button
@@ -261,7 +264,7 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 										title="Dismiss poll"
 										aria-label={`Dismiss poll ${poll.code}`}
 									>
-										✕
+										<X className="h-4 w-4" aria-hidden="true" />
 									</button>
 								)}
 							</li>
@@ -277,8 +280,15 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 								onClick={() => setShowArchived((v) => !v)}
 								aria-expanded={showArchived}
 							>
-								<span>Archived ({archivedPolls.length})</span>
-								<span aria-hidden>{showArchived ? '▲' : '▼'}</span>
+								<span className="inline-flex items-center gap-1.5">
+									<Archive className="h-3.5 w-3.5" aria-hidden="true" />
+									Archived ({archivedPolls.length})
+								</span>
+								{showArchived ? (
+									<ChevronUp className="h-4 w-4" aria-hidden="true" />
+								) : (
+									<ChevronDown className="h-4 w-4" aria-hidden="true" />
+								)}
 							</button>
 							{showArchived && (
 								<ul className="mt-2 space-y-2">
@@ -302,11 +312,12 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 												)}
 											</button>
 											<button
-												className="flex-shrink-0 rounded-lg px-1.5 py-1 text-[11px] opacity-60 transition-opacity hover:opacity-100"
+												className="flex-shrink-0 rounded-lg p-1.5 opacity-60 transition-opacity hover:opacity-100"
 												onClick={() => setArchived(poll.code, false)}
+												title="Unarchive poll"
 												aria-label={`Unarchive poll ${poll.code}`}
 											>
-												Unarchive
+												<ArchiveRestore className="h-4 w-4" aria-hidden="true" />
 											</button>
 										</li>
 									))}
