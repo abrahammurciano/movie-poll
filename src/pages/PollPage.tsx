@@ -1,12 +1,13 @@
 import { usePoll } from '@/hooks/usePoll';
 import { Button } from '@/components/ui/button';
 import { MovieSearch, type MovieData } from '@/components/MovieSearch';
-import { VoteChart } from '@/components/VoteChart';
+import { VoteChart, SCORE_NOTES, SCORE_UNITS } from '@/components/VoteChart';
+import { IrvResults } from '@/components/IrvResults';
 import { posterUrl, getGenreNames, getImdbId } from '@/lib/tmdb';
 import { VOTING_METHODS } from '@/lib/voting';
 import { useState, useEffect, useRef } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
-import { ChevronUp, ChevronDown, Loader2, Users } from 'lucide-react';
+import { ArrowLeft, ChevronUp, ChevronDown, Loader2, Users } from 'lucide-react';
 import type { Movie, PeerId } from '@/types';
 import type { CreatePollSettings } from '@/lib/pollSettings';
 import type { Phase } from '@/types';
@@ -876,7 +877,15 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 		const votingMethod = state.settings?.votingMethod ?? 'irv';
 
 		return (
-			<div className="flex min-h-svh flex-col items-center justify-center gap-5 px-6 py-14 text-center">
+			<div className="relative flex min-h-svh flex-col items-center justify-center gap-5 px-6 py-14 text-center">
+				<button
+					className="absolute left-4 top-4 flex items-center gap-1.5 rounded-xl px-3 py-2 text-sm font-medium transition-colors"
+					style={{ background: 'oklch(1 0 0 / 0.07)', color: 'oklch(1 0 0 / 0.6)' }}
+					onClick={() => _onLeave?.()}
+				>
+					<ArrowLeft className="h-4 w-4" aria-hidden="true" />
+					Back to home
+				</button>
 				<div
 					className="flex h-20 w-20 items-center justify-center rounded-2xl text-4xl"
 					style={{
@@ -971,29 +980,55 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 					<div>
 						<h2 className="text-2xl font-bold">No winner</h2>
 						<p className="mt-1 text-sm text-muted-foreground">
-							Not enough ballots to determine a winner.
+							{Object.keys(state.ballots).length > 0
+								? 'The vote ended in a tie.'
+								: 'Not enough ballots to determine a winner.'}
 						</p>
 					</div>
 				)}
 
-{state.movies.length > 0 && (
-				<div className="w-full max-w-xs rounded-xl p-4" style={{ background: 'oklch(1 0 0 / 0.04)', border: '1px solid oklch(1 0 0 / 0.08)' }}>
-					<VoteChart
-						movies={state.movies}
-						tally={state.finalTally}
-						eliminatedVotes={state.eliminatedVotes}
-						label={votingMethod === 'irv' ? undefined : `${VOTING_METHODS[votingMethod].name} scores`}
-					/>
+{state.movies.length > 0 && votingMethod === 'irv' && state.rounds && state.rounds.length > 0 && (
+					<div className="w-full max-w-sm rounded-xl p-4" style={{ background: 'oklch(1 0 0 / 0.04)', border: '1px solid oklch(1 0 0 / 0.08)' }}>
+						<IrvResults movies={state.movies} rounds={state.rounds} hasWinner={state.winner.length > 0} />
+					</div>
+				)}
+				{state.movies.length > 0 && votingMethod !== 'irv' && (
+					<div className="w-full max-w-sm rounded-xl p-4" style={{ background: 'oklch(1 0 0 / 0.04)', border: '1px solid oklch(1 0 0 / 0.08)' }}>
+						<VoteChart
+							movies={state.movies}
+							tally={state.finalTally}
+							eliminatedVotes={state.eliminatedVotes}
+							label={`${VOTING_METHODS[votingMethod].name} results`}
+							unit={SCORE_UNITS[votingMethod]}
+							note={SCORE_NOTES[votingMethod]}
+						/>
 					</div>
 				)}
 
-				<button
-					className="mt-4 rounded-xl px-6 py-2.5 text-sm font-medium transition-colors"
-					style={{ background: 'oklch(1 0 0 / 0.07)', color: 'oklch(1 0 0 / 0.6)' }}
-					onClick={() => _onLeave?.()}
-				>
-					← Back to home
-				</button>
+				{state.ballots[selfId] && state.ballots[selfId].length > 0 && (
+					<div
+						className="mt-4 w-full max-w-sm rounded-xl p-4 text-left"
+						style={{ background: 'oklch(1 0 0 / 0.04)', border: '1px solid oklch(1 0 0 / 0.08)' }}
+					>
+						<p className="mb-2 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
+							Your vote
+						</p>
+						<ol className="space-y-1">
+							{state.ballots[selfId].map((id, i) => {
+								const movie = state.movies.find((m) => m.id === id);
+								if (!movie) return null;
+								return (
+									<li key={id} className="flex items-baseline gap-2 text-sm">
+										<span className="w-4 flex-shrink-0 text-right text-xs text-muted-foreground">
+											{i + 1}.
+										</span>
+										<span className="min-w-0 truncate">{movie.title}</span>
+									</li>
+								);
+							})}
+						</ol>
+					</div>
+				)}
 			</div>
 		);
 	}
@@ -1453,4 +1488,4 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 
 		</div>
 	);
-						}
+		}

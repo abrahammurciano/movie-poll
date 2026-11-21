@@ -13,10 +13,39 @@ export interface VoteTally {
 	transferred: number;
 }
 
+/** One movie's votes in one instant-runoff round. */
+export interface RoundCount {
+	id: string;
+	/** Ballots whose first choice is this movie. */
+	primary: number;
+	/** Ballots counted here because their higher choices were eliminated. */
+	transferred: number;
+}
+
+export interface IrvRound {
+	/** 1-based round number. */
+	round: number;
+	/** Every movie still in the running this round, with its votes. */
+	counts: RoundCount[];
+	/** Ballots with no remaining choice (not counted for anyone). */
+	exhausted: number;
+	/** Movie ids eliminated at the end of this round (empty in the final round). */
+	eliminated: string[];
+	/** True when several movies tied for last and a tie-break picked who went. */
+	tieBreak: boolean;
+}
+
 export interface VotingResult {
 	winners: Movie[];
+	/**
+	 * Instant runoff: the votes of every movie still in the running in the
+	 * final round. Other methods: each movie's score.
+	 */
 	finalTally: Map<string, VoteTally>;
+	/** Instant runoff: each eliminated movie's total at the round it went out. */
 	eliminatedVotes: Map<string, number>;
+	/** Instant runoff only: the full round-by-round record. */
+	rounds?: IrvRound[];
 }
 
 export function runInstantRunoff(
@@ -25,101 +54,76 @@ export function runInstantRunoff(
 ): VotingResult {
 	const validBallots = Object.values(ballots).filter((b) => b.length > 0);
 	if (validBallots.length === 0 || movies.length === 0) {
-		return { winners: [], finalTally: new Map(), eliminatedVotes: new Map() };
+		return { winners: [], finalTally: new Map(), eliminatedVotes: new Map(), rounds: [] };
 	}
 
 	const remaining = new Set(movies.map((m) => m.id));
 	const eliminatedVotes = new Map<string, number>();
+	const rounds: IrvRound[] = [];
+	const total = validBallots.length;
 
-	while (remaining.size > 1) {
-		// Count first-choice votes among still-active candidates
-		const tally = new Map<string, number>();
-		for (const id of remaining) tally.set(id, 0);
+	const finish = (winnerIds: string[], last: IrvRound): VotingResult => {
+		const winners = winnerIds
+			.map((id) => movies.find((m) => m.id === id))
+			.filter((m): m is Movie => m !== undefined);
+		const finalTally = new Map<string, VoteTally>();
+		for (const c of last.counts) finalTally.set(c.id, { primary: c.primary, transferred: c.transferred });
+		return { winners, finalTally, eliminatedVotes, rounds };
+	};
 
+	while (remaining.size > 0) {
+		// Count each ballot for its highest-ranked movie still in the running
+		const counts = new Map<string, RoundCount>();
+		for (const id of remaining) counts.set(id, { id, primary: 0, transferred: 0 });
+		let exhausted = 0;
 		for (const ballot of validBallots) {
-			const top = ballot.find((id) => remaining.has(id));
-			if (top) tally.set(top, (tally.get(top) ?? 0) + 1);
-		}
-
-		// Check for majority
-		const total = validBallots.length;
-		for (const [id, count] of tally) {
-			if (count > total / 2) {
-				const movie = movies.find((m) => m.id === id);
-				if (movie) {
-					const finalTally = computeVoteBreakdown(validBallots, new Set([id]));
-					return { winners: [movie], finalTally, eliminatedVotes };
-				}
-				return { winners: [], finalTally: new Map(), eliminatedVotes };
+			const rank = ballot.findIndex((id) => remaining.has(id));
+			if (rank === -1) {
+				exhausted += 1;
+				continue;
 			}
+			const c = counts.get(ballot[rank])!;
+			if (rank === 0) c.primary += 1;
+			else c.transferred += 1;
 		}
+		const round: IrvRound = {
+			round: rounds.length + 1,
+			counts: Array.from(counts.values()),
+			exhausted,
+			eliminated: [],
+			tieBreak: false,
+		};
+		rounds.push(round);
+		const votes = (c: RoundCount) => c.primary + c.transferred;
 
-		// Find candidates with fewest votes
-		const minVotes = Math.min(...tally.values());
-		const toEliminate = new Set(
-			Array.from(tally.entries())
-				.filter(([, count]) => count === minVotes)
-				.map(([id]) => id)
-		);
+		// Majority of all valid ballots wins
+		const leader = round.counts.find((c) => votes(c) > total / 2);
+		if (leader) return finish([leader.id], round);
 
-		// If only one candidate to eliminate, do it
-		if (toEliminate.size === 1) {
-			const id = Array.from(toEliminate)[0];
-			eliminatedVotes.set(id, tally.get(id) ?? 0);
-			remaining.delete(id);
-		} else {
-			// Multiple tied for elimination - use weighted scoring to break tie
-			const weights = getWeightedScores(validBallots, toEliminate);
+		// Last movie standing
+		if (remaining.size === 1) return finish(Array.from(remaining), round);
+
+		const minVotes = Math.min(...round.counts.map(votes));
+		const lowest = round.counts.filter((c) => votes(c) === minVotes).map((c) => c.id);
+		let out = lowest;
+		if (lowest.length > 1) {
+			// Tie for last: the lowest position-weighted score goes
+			round.tieBreak = true;
+			const weights = getWeightedScores(validBallots, new Set(lowest));
 			const minWeight = Math.min(...Array.from(weights.values()));
-			const lowestWeighted = Array.from(weights.entries())
-				.filter(([, w]) => w === minWeight)
-				.map(([id]) => id);
-
-			lowestWeighted.forEach((id) => {
-				eliminatedVotes.set(id, tally.get(id) ?? 0);
-				remaining.delete(id);
-			});
+			out = lowest.filter((id) => weights.get(id) === minWeight);
 		}
-	}
-
-	// Movies with zero votes in all rounds also count as eliminated with 0
-	for (const movie of movies) {
-		if (!remaining.has(movie.id) && !eliminatedVotes.has(movie.id)) {
-			eliminatedVotes.set(movie.id, 0);
+		for (const id of out) {
+			eliminatedVotes.set(id, votes(counts.get(id)!));
+			remaining.delete(id);
 		}
+		round.eliminated = out;
 	}
 
-	const winners = Array.from(remaining)
-		.map((id) => movies.find((m) => m.id === id)!)
-		.filter((m) => m !== undefined);
+	// Everyone left was eliminated together (tied all the way down, as before this
+	// change): no single winner. The rounds still record what happened.
 
-	const finalTally = computeVoteBreakdown(validBallots, remaining);
-	return { winners, finalTally, eliminatedVotes };
-}
-
-function computeVoteBreakdown(ballots: string[][], finalCandidates: Set<string>): Map<string, VoteTally> {
-	const breakdown = new Map<string, VoteTally>();
-
-	for (const id of finalCandidates) {
-		breakdown.set(id, { primary: 0, transferred: 0 });
-	}
-
-	for (const ballot of ballots) {
-		for (let rank = 0; rank < ballot.length; rank++) {
-			const id = ballot[rank];
-			if (finalCandidates.has(id)) {
-				const tally = breakdown.get(id)!;
-				if (rank === 0) {
-					tally.primary += 1;
-				} else {
-					tally.transferred += 1;
-				}
-				break;
-			}
-		}
-	}
-
-	return breakdown;
+	return { winners: [], finalTally: new Map(), eliminatedVotes, rounds };
 }
 
 function getWeightedScores(ballots: string[][], candidateIds: Set<string>): Map<string, number> {
@@ -351,4 +355,4 @@ function runRankedPairs(ballots: Record<string, string[]>, movies: Movie[]): Vot
 		finalTally.set(movie.id, { primary: locked.get(movie.id)?.size ?? 0, transferred: 0 });
 	}
 	return { winners, finalTally, eliminatedVotes: new Map() };
-}
+		}
