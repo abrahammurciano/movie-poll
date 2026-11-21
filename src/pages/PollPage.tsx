@@ -1,7 +1,8 @@
 import { usePoll } from '@/hooks/usePoll';
 import { Button } from '@/components/ui/button';
 import { MovieSearch, type MovieData } from '@/components/MovieSearch';
-import { VoteChart } from '@/components/VoteChart';
+import { VoteChart, SCORE_NOTES, SCORE_UNITS } from '@/components/VoteChart';
+import { IrvResults } from '@/components/IrvResults';
 import { posterUrl, getGenreNames, getImdbId } from '@/lib/tmdb';
 import { VOTING_METHODS } from '@/lib/voting';
 import { useState, useEffect, useRef } from 'react';
@@ -945,14 +946,21 @@ export function PollPage({ pollCode, displayName, autoShare = false, isHost = fa
 					</div>
 				)}
 
-{state.movies.length > 0 && (
-				<div className="w-full max-w-xs rounded-xl p-4" style={{ background: 'oklch(1 0 0 / 0.04)', border: '1px solid oklch(1 0 0 / 0.08)' }}>
-					<VoteChart
-						movies={state.movies}
-						tally={state.finalTally}
-						eliminatedVotes={state.eliminatedVotes}
-						label={votingMethod === 'irv' ? undefined : `${VOTING_METHODS[votingMethod].name} scores`}
-					/>
+{state.movies.length > 0 && votingMethod === 'irv' && state.rounds && state.rounds.length > 0 && (
+					<div className="w-full max-w-sm rounded-xl p-4" style={{ background: 'oklch(1 0 0 / 0.04)', border: '1px solid oklch(1 0 0 / 0.08)' }}>
+						<IrvResults movies={state.movies} rounds={state.rounds} />
+					</div>
+				)}
+				{state.movies.length > 0 && votingMethod !== 'irv' && (
+					<div className="w-full max-w-sm rounded-xl p-4" style={{ background: 'oklch(1 0 0 / 0.04)', border: '1px solid oklch(1 0 0 / 0.08)' }}>
+						<VoteChart
+							movies={state.movies}
+							tally={state.finalTally}
+							eliminatedVotes={state.eliminatedVotes}
+							label={`${VOTING_METHODS[votingMethod].name} results`}
+							unit={SCORE_UNITS[votingMethod]}
+							note={SCORE_NOTES[votingMethod]}
+						/>
 					</div>
 				)}
 
