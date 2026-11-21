@@ -10,7 +10,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { requireUser } from '@/lib/firebase';
-import { getUserProfile, subscribePoll, unregisterPoll, type PollDocs } from '@/lib/pollStore';
+import { getUserProfile, setPollArchived, subscribePoll, unregisterPoll, type PollDocs } from '@/lib/pollStore';
 import { computeState } from '@/lib/pollState';
 import type { Phase } from '@/types';
 
@@ -20,11 +20,18 @@ export interface PollSummary {
 	winnerTitles: string[];
 	/** Host-chosen poll title, when set. */
 	title?: string;
+	/** Hidden from the main list by the user (restorable). */
+	archived: boolean;
 }
 
-export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: string) => void } {
+export function useKnownPolls(): {
+	summaries: PollSummary[];
+	dismiss: (code: string) => void;
+	setArchived: (code: string, archived: boolean) => void;
+} {
 	const [summaries, setSummaries] = useState<PollSummary[]>([]);
 	const selfIdRef = useRef('');
+	const [archivedCodes, setArchivedCodes] = useState<Set<string>>(new Set());
 
 	useEffect(() => {
 		const cleanups: Array<() => void> = [];
@@ -37,6 +44,7 @@ export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: str
 			try {
 				const profile = await getUserProfile(user.uid);
 				codes = profile?.polls ?? [];
+				setArchivedCodes(new Set(profile?.archived ?? []));
 			} catch {
 				// Registry unavailable (offline): nothing to list yet; the
 				// app requires connectivity for Firestore anyway.
@@ -63,7 +71,7 @@ export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: str
 					);
 					setSummaries((prev) => {
 						const next = prev.filter((s) => s.code !== code);
-						next.push({ code, phase: state.phase, winnerTitles: state.winner.map((m) => m.title), title: poll.settings?.title });
+						next.push({ code, phase: state.phase, winnerTitles: state.winner.map((m) => m.title), title: poll.settings?.title, archived: false });
 						next.sort((a, b) => codes.indexOf(a.code) - codes.indexOf(b.code));
 						return [...next];
 					});
@@ -91,5 +99,25 @@ export function useKnownPolls(): { summaries: PollSummary[]; dismiss: (code: str
 		setSummaries((prev) => prev.filter((s) => s.code !== code));
 	}
 
-	return { summaries, dismiss };
+	function setArchived(code: string, archived: boolean) {
+		const before = archivedCodes.has(code);
+		const apply = (on: boolean) =>
+			setArchivedCodes((prev) => {
+				const next = new Set(prev);
+				if (on) next.add(code);
+				else next.delete(code);
+				return next;
+			});
+		apply(archived);
+		if (!selfIdRef.current) return;
+		// Firestore is the source of truth: roll the optimistic change back
+		// if the write is rejected.
+		setPollArchived(selfIdRef.current, code, archived).catch((e) => {
+			console.warn('archive write failed', e);
+			apply(before);
+		});
+	}
+
+	const withArchived = summaries.map((s) => ({ ...s, archived: archivedCodes.has(s.code) }));
+	return { summaries: withArchived, dismiss, setArchived };
 }
