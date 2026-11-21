@@ -229,18 +229,19 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 								style={{ background: 'oklch(1 0 0 / 0.04)', border: '1px solid oklch(1 0 0 / 0.07)' }}
 							>
 								<button
-									className="flex min-w-0 flex-1 items-center gap-3 text-left cursor-pointer"
+									className="min-w-0 flex-1 cursor-pointer text-left"
 									onClick={() => onJoin(poll.code, name.trim(), false)}
 								>
-									<span className="font-mono text-sm font-semibold tracking-[0.18em]">
-										{poll.code}
-									</span>
-									{poll.title && (
-										<span className="min-w-0 flex-1 truncate text-sm font-medium">
+									{poll.title ? (
+										<span className="block truncate text-sm font-medium">
 											{poll.title}
 										</span>
+									) : (
+										<span className="block truncate font-mono text-sm font-semibold tracking-[0.18em]">
+											{poll.code}
+										</span>
 									)}
-									<span className="min-w-0 flex-1 truncate text-xs text-muted-foreground">
+									<span className="block truncate text-xs text-muted-foreground">
 										{poll.phase === 'nominations' && 'Nominating'}
 										{poll.phase === 'voting' && 'Voting'}
 										{poll.phase === 'results' &&
@@ -299,15 +300,16 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 											style={{ background: 'oklch(1 0 0 / 0.03)', border: '1px solid oklch(1 0 0 / 0.06)' }}
 										>
 											<button
-												className="flex min-w-0 flex-1 items-center gap-3 text-left cursor-pointer opacity-70"
+												className="min-w-0 flex-1 cursor-pointer text-left opacity-70"
 												onClick={() => onJoin(poll.code, name.trim(), false)}
 											>
-												<span className="font-mono text-sm font-semibold tracking-[0.18em]">
-													{poll.code}
-												</span>
-												{poll.title && (
-													<span className="min-w-0 flex-1 truncate text-sm font-medium">
+												{poll.title ? (
+													<span className="block truncate text-sm font-medium">
 														{poll.title}
+													</span>
+												) : (
+													<span className="block truncate font-mono text-sm font-semibold tracking-[0.18em]">
+														{poll.code}
 													</span>
 												)}
 											</button>
