@@ -36,6 +36,7 @@ export const EMPTY_STATE: PollState = {
 	winner: [],
 	finalTally: new Map(),
 	eliminatedVotes: new Map(),
+	rounds: undefined,
 };
 
 /** Two nominations are the same movie when they share a TMDB id (or id). */
@@ -86,6 +87,7 @@ export function computeState(
 		state.winner = result.winners;
 		state.finalTally = result.finalTally;
 		state.eliminatedVotes = result.eliminatedVotes;
+		state.rounds = result.rounds;
 	}
 
 	return state;
