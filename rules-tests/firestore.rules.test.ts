@@ -406,3 +406,29 @@ describe('reads', () => {
 		await assertSucceeds(getDoc(doc(db, 'polls', CODE)));
 	});
 });
+
+describe('archived polls registry', () => {
+	const userDoc = (uid: string, as = uid) =>
+		doc(testEnv.authenticatedContext(as).firestore(), 'users', uid);
+
+	it('lets an account archive and unarchive its own polls', async () => {
+		await assertSucceeds(setDoc(userDoc('u1'), { polls: { [CODE]: true } }, { merge: true }));
+		await assertSucceeds(setDoc(userDoc('u1'), { archived: { [CODE]: true } }, { merge: true }));
+		await assertSucceeds(
+			setDoc(userDoc('u1'), { archived: { [CODE]: deleteField() } }, { merge: true }),
+		);
+	});
+
+	it('rejects archived values other than true', async () => {
+		await assertFails(setDoc(userDoc('u1'), { archived: { [CODE]: false } }, { merge: true }));
+		await assertFails(setDoc(userDoc('u1'), { archived: [CODE] }, { merge: true }));
+	});
+
+	it("rejects writing another account's archive list", async () => {
+		await assertFails(setDoc(userDoc('u1', 'u2'), { archived: { [CODE]: true } }, { merge: true }));
+	});
+
+	it('still rejects unknown fields', async () => {
+		await assertFails(setDoc(userDoc('u1'), { other: true }, { merge: true }));
+	});
+});
