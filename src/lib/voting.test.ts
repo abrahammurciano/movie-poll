@@ -27,7 +27,11 @@ describe('runInstantRunoff', () => {
 		);
 
 		expect(result.winners.map((winner) => winner.id)).toEqual(['a']);
-		expect(result.finalTally.get('a')).toEqual({ primary: 2, transferred: 1 });
+		// Round 1 already has a majority: p2's second choice was never needed.
+		expect(result.finalTally.get('a')).toEqual({ primary: 2, transferred: 0 });
+		expect(result.rounds).toHaveLength(1);
+		// b is still in the race at that point and keeps its real count, not 0.
+		expect(result.finalTally.get('b')).toEqual({ primary: 1, transferred: 0 });
 		expect(result.eliminatedVotes.size).toBe(0);
 	});
 
@@ -46,6 +50,69 @@ describe('runInstantRunoff', () => {
 		expect(result.eliminatedVotes.get('a')).toBe(1);
 		expect(result.eliminatedVotes.get('b')).toBe(1);
 		expect(result.finalTally.get('c')).toEqual({ primary: 2, transferred: 2 });
+	});
+});
+
+describe('runInstantRunoff rounds', () => {
+	const five: Movie[] = ['a', 'b', 'c', 'd'].map((id) => ({ id, title: id.toUpperCase(), nominatedBy: ['x'] }));
+
+	it('records native and transferred votes at each elimination', () => {
+		// R1: a2 b2 c1 d0... d has zero first choices and goes first.
+		const result = runInstantRunoff(
+			{
+				p1: ['a', 'b', 'c', 'd'],
+				p2: ['a', 'c', 'b', 'd'],
+				p3: ['b', 'c', 'a', 'd'],
+				p4: ['b', 'a', 'c', 'd'],
+				p5: ['c', 'b', 'a', 'd'],
+			},
+			five,
+		);
+		const r = result.rounds!;
+		expect(r[0].eliminated).toEqual(['d']);
+		expect(r[1].eliminated).toEqual(['c']);
+		// c went out with 1 first-choice vote and 0 transfers
+		expect(result.eliminatedVotes.get('c')).toBe(1);
+		expect(result.eliminatedVotes.get('d')).toBe(0);
+		// R3: p5's vote moves c -> b; b has 2 first-choice + 1 transferred = 3 > 2.5
+		expect(result.winners.map((m) => m.id)).toEqual(['b']);
+		expect(result.finalTally.get('b')).toEqual({ primary: 2, transferred: 1 });
+		expect(result.finalTally.get('a')).toEqual({ primary: 2, transferred: 0 });
+		expect(r[2].tieBreak).toBe(false);
+	});
+
+	it('flags a tie-break and keeps totals consistent per round', () => {
+		const result = runInstantRunoff(
+			{
+				p1: ['a', 'b', 'c'],
+				p2: ['b', 'a', 'c'],
+				p3: ['c', 'b', 'a'],
+				p4: ['c', 'a', 'b'],
+			},
+			movies,
+		);
+		const first = result.rounds![0];
+		expect(first.tieBreak).toBe(true);
+		for (const round of result.rounds!) {
+			const counted = round.counts.reduce((n, c) => n + c.primary + c.transferred, 0);
+			expect(counted + round.exhausted).toBe(4);
+		}
+	});
+
+	it('reports co-winners when the last movies are tied all the way down', () => {
+		const result = runInstantRunoff({ p1: ['a'], p2: ['b'] }, movies.slice(0, 2));
+		expect(result.winners.map((m) => m.id).sort()).toEqual(['a', 'b']);
+	});
+
+	it('counts ballots with no remaining choice as exhausted, not as votes', () => {
+		const result = runInstantRunoff(
+			{ p1: ['a'], p2: ['a'], p3: ['b'], p4: ['c'], p5: ['c'] },
+			movies,
+		);
+		// b is eliminated; p3 has no further choice. a=2, c=2 of 5 valid: tie, co-winners.
+		expect(result.rounds![0].eliminated).toEqual(['b']);
+		expect(result.rounds![1].exhausted).toBe(1);
+		expect(result.winners.map((m) => m.id).sort()).toEqual(['a', 'c']);
 	});
 });
 
