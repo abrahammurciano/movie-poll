@@ -1,3 +1,4 @@
+import type { IrvRound } from '@/lib/voting';
 // ─── Domain Types ────────────────────────────────────────────────────────────
 
 export type PeerId = string;
@@ -50,4 +51,6 @@ export interface PollState {
 	winner: Movie[];
 	finalTally: Map<string, { primary: number; transferred: number }>;
 	eliminatedVotes: Map<string, number>;
+	/** Instant runoff only: full round-by-round record for the results page. */
+	rounds?: IrvRound[];
 }
