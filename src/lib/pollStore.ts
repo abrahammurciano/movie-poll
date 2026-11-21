@@ -40,6 +40,10 @@ export interface PollDocs {
 	ballots: Ballots;
 	/** false until every subscription has delivered its first snapshot */
 	ready: boolean;
+	/** true once the poll document itself came from the server (not the local cache) */
+	pollConfirmed: boolean;
+	/** set when any subscription failed; the data is then incomplete and must not be shown as the poll */
+	error: string | null;
 }
 
 const polls = collection(db, 'polls');
@@ -71,7 +75,7 @@ function toPollDoc(data: DocumentData): PollDoc {
 
 /** Subscribe to everything that defines a poll. Fires on every change. */
 export function subscribePoll(code: string, cb: (docs: PollDocs) => void): () => void {
-	const docs: PollDocs = { poll: undefined, participants: {}, nominations: {}, ballots: {}, ready: false };
+	const docs: PollDocs = { poll: undefined, participants: {}, nominations: {}, ballots: {}, ready: false, pollConfirmed: false, error: null };
 	const seen = new Set<string>();
 	// A snapshot served from the local cache (e.g. while offline, where it is
 	// empty) is not the poll: only a server-confirmed first snapshot, or a
@@ -84,12 +88,14 @@ export function subscribePoll(code: string, cb: (docs: PollDocs) => void): () =>
 	// A failed subscription still counts as settled so the page never spins forever.
 	const onError = (what: string) => (error: unknown) => {
 		console.error(`poll ${code}: ${what} subscription failed`, error);
+		docs.error = `${what} subscription failed`;
 		emit(what);
 	};
 
 	const unsubs = [
 		onSnapshot(pollRef(code), (snap) => {
 			docs.poll = snap.exists() ? toPollDoc(snap.data()) : null;
+			if (!snap.metadata.fromCache) docs.pollConfirmed = true;
 			emit('poll', !snap.metadata.fromCache);
 		}, onError('poll')),
 		onSnapshot(collection(polls, code, 'participants'), (snap) => {
