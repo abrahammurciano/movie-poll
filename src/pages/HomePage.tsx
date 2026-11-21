@@ -69,7 +69,10 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 	const [code, setCode] = useState(initialCode ?? '');
 	const [settings, setSettings] = useState<CreatePollSettings>(loadPollSettings);
 	const [showSettingsModal, setShowSettingsModal] = useState(false);
-	const { summaries: knownPolls, dismiss: dismissPoll } = useKnownPolls();
+	const { summaries: knownPolls, dismiss: dismissPoll, setArchived } = useKnownPolls();
+	const [showArchived, setShowArchived] = useState(false);
+	const activePolls = knownPolls.filter((p) => !p.archived);
+	const archivedPolls = knownPolls.filter((p) => p.archived);
 
 	function updateSettings(next: CreatePollSettings) {
 		setSettings(next);
@@ -216,7 +219,7 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 						Your polls
 					</p>
 					<ul className="space-y-2">
-						{knownPolls.map((poll) => (
+						{activePolls.map((poll) => (
 							<li
 								key={poll.code}
 								className="flex items-center gap-3 rounded-xl px-3 py-2.5"
@@ -243,6 +246,14 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 												: 'Closed')}
 									</span>
 								</button>
+								<button
+									className="flex-shrink-0 rounded-lg px-1.5 py-1 text-[11px] opacity-50 transition-opacity hover:opacity-90"
+									onClick={() => setArchived(poll.code, true)}
+									title="Archive poll"
+									aria-label={`Archive poll ${poll.code}`}
+								>
+									Archive
+								</button>
 								{poll.phase === 'results' && (
 									<button
 										className="flex-shrink-0 rounded-lg p-1 text-xs opacity-40 transition-opacity hover:opacity-90"
@@ -256,6 +267,53 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 							</li>
 						))}
 					</ul>
+					{activePolls.length === 0 && (
+						<p className="text-xs text-muted-foreground">No active polls.</p>
+					)}
+					{archivedPolls.length > 0 && (
+						<div className="mt-3 border-t pt-3" style={{ borderColor: 'oklch(1 0 0 / 0.08)' }}>
+							<button
+								className="flex w-full items-center justify-between text-xs text-muted-foreground transition-colors hover:text-foreground cursor-pointer"
+								onClick={() => setShowArchived((v) => !v)}
+								aria-expanded={showArchived}
+							>
+								<span>Archived ({archivedPolls.length})</span>
+								<span aria-hidden>{showArchived ? '▲' : '▼'}</span>
+							</button>
+							{showArchived && (
+								<ul className="mt-2 space-y-2">
+									{archivedPolls.map((poll) => (
+										<li
+											key={poll.code}
+											className="flex items-center gap-3 rounded-xl px-3 py-2.5"
+											style={{ background: 'oklch(1 0 0 / 0.03)', border: '1px solid oklch(1 0 0 / 0.06)' }}
+										>
+											<button
+												className="flex min-w-0 flex-1 items-center gap-3 text-left cursor-pointer opacity-70"
+												onClick={() => onJoin(poll.code, name.trim(), false)}
+											>
+												<span className="font-mono text-sm font-semibold tracking-[0.18em]">
+													{poll.code}
+												</span>
+												{poll.title && (
+													<span className="min-w-0 flex-1 truncate text-sm font-medium">
+														{poll.title}
+													</span>
+												)}
+											</button>
+											<button
+												className="flex-shrink-0 rounded-lg px-1.5 py-1 text-[11px] opacity-60 transition-opacity hover:opacity-100"
+												onClick={() => setArchived(poll.code, false)}
+												aria-label={`Unarchive poll ${poll.code}`}
+											>
+												Unarchive
+											</button>
+										</li>
+									))}
+								</ul>
+							)}
+						</div>
+					)}
 				</div>
 			)}
 
@@ -285,4 +343,4 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 			</div>
 		</div>
 	);
-}
+			}
