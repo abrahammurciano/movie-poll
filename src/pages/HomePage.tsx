@@ -343,4 +343,4 @@ export function HomePage({ onJoin, initialCode, initialName }: Props) {
 			</div>
 		</div>
 	);
-			}
+}
